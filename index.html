@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MPD Studio · v3.9.7</title>
+<title>MPD Studio · v3.10.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&family=Barlow:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -306,6 +306,30 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 .tts-part-btns .btn{justify-content:flex-start;text-align:left}
 .tts-tick{width:26px;height:26px;flex:0 0 26px;border-radius:50%;border:2px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
 .tts-tick.on{background:var(--teal);color:var(--canvas)}
+
+/* Stage 3.8 · thumbnail variants + A/B scorecard (v3.10.0) */
+.tv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(252px,1fr));gap:10px;margin-top:8px}
+.tv-card{background:var(--canvas-deep);border-left:3px solid var(--teal);padding:11px 13px}
+.tv-card.rec{border-left-color:var(--amber)}
+.tv-h{font-family:var(--font-display);font-weight:900;font-size:17px;text-transform:uppercase;line-height:1}
+.tv-sub{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-soft);letter-spacing:.07em;margin:4px 0 8px;text-transform:uppercase}
+.tv-note{font-size:12px;line-height:1.45;margin-bottom:9px}
+.tv-btns{display:flex;gap:6px;flex-wrap:wrap}
+.sc-wrap{overflow-x:auto;margin-top:8px}
+.sc-table{width:100%;border-collapse:collapse;font-size:12px;min-width:520px}
+.sc-table th{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);text-align:center;padding:6px 3px;border-bottom:1px solid var(--hairline);font-weight:500}
+.sc-table th.l,.sc-table td.l{text-align:left}
+.sc-table td{padding:3px;border-bottom:1px solid var(--hairline);text-align:center}
+.sc-table input[type=number]{width:44px;padding:4px 2px;text-align:center;font-family:var(--font-mono);font-size:12px}
+.sc-tool{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;white-space:nowrap}
+.sc-tot{font-family:var(--font-display);font-weight:900;font-size:16px}
+.sc-row.top td{background:#2DB89D26}
+.sc-row.top .sc-tot{color:var(--teal-deep)}
+.sc-legend{font-family:var(--font-mono);font-size:10px;color:var(--ink-soft);line-height:1.7;margin-top:8px}
+.thumb-picks{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+.pick-row{display:flex;align-items:center;gap:11px;padding:9px 11px;background:var(--canvas-deep);max-width:560px;border-left:3px solid var(--amber)}
+.pick-slot{font-family:var(--font-display);font-weight:900;font-size:20px;width:34px;flex:0 0 34px;line-height:1}
+.pick-meta{font-family:var(--font-mono);font-size:10px;color:var(--ink-soft);margin-top:3px}
 </style>
 </head>
 <body>
@@ -315,7 +339,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 <aside class="side">
   <div class="brand">
     MPD<br>Studio
-    <small id="app-ver">v3.9.7 · single-file · cloud-synced</small>
+    <small id="app-ver">v3.10.0 · single-file · cloud-synced</small>
   </div>
 
   <nav class="navlist" id="nav">
@@ -641,7 +665,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
           <tr><td><b>G7</b></td><td>3.6</td><td>Asset manifest complete (NEW vs REUSE) · country panels if required</td></tr>
           <tr><td><b>G8</b></td><td>3.7</td><td>A+V sync ≤ 50ms · duration matches the shell · picture fade and audio duck land together</td></tr>
           <tr><td><b>G9</b></td><td>3.7</td><td>Final master loudness −14 LUFS · −1 dBTP · no MP3 artifacts</td></tr>
-          <tr><td><b>G10</b></td><td>3.8</td><td>Thumbnail CTR criteria · 3-element rule · readable at 120px</td></tr>
+          <tr><td><b>G10</b></td><td>3.8</td><td>Thumbnail CTR criteria · ink ground · 3-element rule · text budget · one open loop · legible at 168px · grayscale-safe · 3 candidates, 3 archetypes</td></tr>
           <tr><td><b>G11</b></td><td>3.9 / 3.10</td><td>Title ≤60 chars · keyword in first 20 chars · corpus appended</td></tr>
           <tr><td><b>G12</b></td><td>all</td><td>Slop check: no banned phrasings, no AI tells, no fearmonger language</td></tr>
         </tbody>
@@ -865,7 +889,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 // ════════════════════════════════════════════════════════════════════
 //  STATE SCHEMA + SEED
 // ════════════════════════════════════════════════════════════════════
-const APP_VERSION = '3.9.7';
+const APP_VERSION = '3.10.0';
 // Infrastructure contract versions Stage 3.6 depends on. Bump alongside any
 // change to the episode.json shape or the shell validator, and the payload's
 // preflight expectation moves with it automatically.
@@ -879,7 +903,7 @@ const STAGE_META = {
   '3.5':  {name:'Captions',          artifact:'05_Captions',          ext:'json', gates:['G5'],               input:'04_MasterAudio_v#.wav · mpd-srt',    output:'Words JSON — {text,start,end} per spoken word'},
   '3.6':  {name:'Video HTML',         artifact:'06_VideoHTML',         ext:'html', gates:['G6','G7','G12'],    input:'01 + 02 + 05 outputs · adapter library', output:'Assembled self-contained video HTML (validator green) + episode.json'},
   '3.7':  {name:'Master Render',       artifact:'07_MasterVideo',       ext:'mp4',  gates:['G8','G9'],          input:'04 + 06 outputs · mpd-render-web',   output:'Final MP4 master ready to upload'},
-  '3.8':  {name:'Thumbnail',          artifact:'08_Thumbnail',         ext:'png',  gates:['G10'],              input:'topic + hook from 01',               output:'1280×720 thumbnail with 3-element rule'},
+  '3.8':  {name:'Thumbnail',          artifact:'08_Thumbnail',         ext:'png',  gates:['G10','G12'],        input:'canonical figures + hook from 01',   output:'3 A/B candidates · 1280×720 PNG + editable source each'},
   '3.9':  {name:'Upload Pack',        artifact:'09_UploadPack',        ext:'md',   gates:['G11','G12'],        input:'all prior + keyword research',        output:'Title, description, tags, end-screen plan'},
   '3.10': {name:'Library Update',     artifact:'10_LibraryDelta',      ext:'md',   gates:['G11'],              input:'08 + 09 outputs · asset usage',       output:'Corpus delta + changelog entry'},
 };
@@ -904,7 +928,7 @@ const STAGE_INPUTS = {
     {from:'3.4', artifact:'04_MasterAudio',          ext:'wav',  kind:'binary',         required:true},
     {from:'3.6', artifact:'06_VideoHTML',            ext:'html', kind:'reference-only', required:true},
   ],
-  '3.8':  [{from:'3.1', artifact:'01_StrategyBrief', ext:'html', kind:'inline-html',    required:false}],
+  '3.8':  [{from:'3.1', artifact:'01_StrategyBrief', ext:'html', kind:'inline-html',    required:true}],
   '3.9':  [{from:'3.1', artifact:'01_StrategyBrief', ext:'html', kind:'inline-html',    required:true}],
   '3.10': [
     {from:'3.1', artifact:'01_StrategyBrief',        ext:'html', kind:'inline-html',    required:true},
@@ -949,7 +973,7 @@ const SEED_STATE = {
     '3.5': '- Word-level alignment required, not sentence-level.\n- No %CHAPTER% markers: Stage 3.6 derives chapter starts from the 3.2 VoiceScript part order.\n- Hand-check every number against the 3.1 brief. Whisper mangles dollar figures and years.',
     '3.6': '- Beat starts must equal a WORDS[i].start within 50ms. No guessed timestamps.\n- Bind every on-screen figure from the 3.1 brief, never from the caption transcript.\n- Validator green (BUILD/G6/GAP/CH) is a precondition for rating, not a nice-to-have.\n- Country panels (G7) required if topic implies international comparison.\n- Use ONLY brand palette tokens; reject any color outside the canon.',
     '3.7': '- Run Inspect first: it benchmarks every encoder configuration and reports the projected runtime before a frame is written.\n- Contact sheets before the master. It is the only check that looks at whether text fits its box.\n- Never force VP9 into MP4. If H.264 is unavailable, WebM VP9 is a valid YouTube master.',
-    '3.8': '- 3-element rule: face/object + bold number + 1-3 word verb.\n- Test at 120×68 px (mobile feed size) — must be readable.\n- Amber for the number, Red for the reveal, Ink for the verb.',
+    '3.8': '- Ink ground, amber/canvas figures. Beige ground separates at ~1.6:1 in a feed; amber on ink is ~9:1.\n- Three candidates, three different archetypes — three variations of one idea is a wasted A/B test.\n- Text budget is hard: 4 words, 14 characters, 6 glyphs in the number.\n- Exactly one open-loop device per candidate. Zero reads as a chart, two reads as noise.\n- Every figure from the 3.1 brief. Never from captions, never rounded for effect.',
     '3.9': '- Keyword in first 20 chars of title. Curiosity gap, not clickbait.\n- Description: hook in first 2 lines (search snippet), then chapter timestamps.\n- 5-8 tags, all keyword-adjacent, not generic.',
     '3.10': '- Append NEW assets to corpus with D### as first-used.\n- Reserved rows promote to active when used.\n- Changelog: D###, date shipped, total cycles, soft fails.',
   },
@@ -986,7 +1010,67 @@ const STAGE_GUIDES = {
   '3.5': "### Manual stage \u2014 captions via companion tool\nUse **mpd-srt** at https://ealihasnain.github.io/mpd-srt to transcribe the master audio with word-level timing.\n\n### Spec\nThe artifact Stage 3.6 consumes is the **Words JSON**, not the SRT. Shape:\n\n```json\n{ \"duration_sec\": 564.4, \"word_count\": 1189,\n  \"words\": [ { \"text\": \"600,000\", \"start\": 0, \"end\": 1.54 }, ... ] }\n```\n\n- One entry per spoken word, `start`/`end` in seconds, within 50ms of actual playback\n- **No chapter markers.** Stage 3.6 derives chapter starts by matching the 3.2 VoiceScript part order against the word array. Do not hand-insert `%CHAPTER%` lines.\n- **Word order is the contract.** Stage 3.6 receives this file as an indexed transcript (`[0]word [1]word ...`) and anchors every beat by that index, never by a timestamp it invents. A dropped or merged word here shifts every index after it.\n- Captions never appear on screen in the final video. The SRT is kept only as the YouTube transcript.\n\n### Workflow\n1. Upload the master audio to the tool\n2. Transcribe with word-level timing (Whisper-class model)\n3. Hand-review against the 3.2 script. **Numbers are the failure mode** \u2014 Whisper routinely mangles dollar figures and years. Check every one against the 3.1 Strategy Brief.\n4. Export the Words JSON with the filename shown on the stage card, and the SRT alongside it\n\n### QA pass\n- Spot-check 10 random words: timestamp within \u00b150ms?\n- No dropped words, especially around figures\n- Every number matches the Strategy Brief, not just the audio\n\n### Output\n`EP###.5_Captions_v1.json` \u00b7 word-level timing \u00b7 reviewed against the brief. This file is the sole timing source for Stage 3.6.",
   '3.6': "### Preflight \u2014 do this before anything else\nInfrastructure in project knowledge can be stale, and a stale file looks identical to a current one. Filenames do not carry the truth; the stamp inside does. Run this first:\n\n```\ngrep -h \"@mpd-version\" _SH_assemble.js _SH_VideoShell*.html\n```\n\nExpected exactly:\n\n```\n// @mpd-version assemble {{INFRA_ASSEMBLE}}\n<!-- @mpd-version shell {{INFRA_SHELL}} -->\n```\n\n**Any mismatch, or no stamp at all, means STOP.** Name the stale file and tell the user to re-upload it to project knowledge. Do not bridge, do not shim, do not author a format the shipped code cannot consume \u2014 a workaround here produces an artifact in the wrong contract that has to be rebuilt later. An unstamped file is pre-v2 by definition.\n\n### Method \u2014 assemble, do not hand-roll\nThis stage does **not** write a video file by hand. It builds a timeline and runs it through the shell assembler (v2). The permanent infrastructure lives in project knowledge and is never re-uploaded per episode:\n\n- `_GD_00_README.md` \u2014 **read this first, it is the map** \u2014 through `_GD_06_FrameFill.md`\n- `_RT_mpd-toolkit.js` \u00b7 `_RT_fonts_b64.css` \u2014 runtime\n- `_SH_VideoShell.html` \u00b7 `_SH_assemble.js` \u2014 shell template + assembler (both carry an `@mpd-version` stamp; the shell is deliberately unversioned in its filename)\n- Nine `_IX_Adapters_<K>.md` indexes + `_IX_Adapters_ALL.tsv` \u2014 973 adapter designs across C \u00b7 D \u00b7 G \u00b7 L \u00b7 M \u00b7 N \u00b7 S \u00b7 T \u00b7 X\n\nIf any of those are absent from project knowledge, STOP and say so rather than improvising a file.\n\n### Inputs (all three required)\n- **3.1 Strategy Brief** \u2014 chapter list, visual asset prescriptions, and every figure that appears on screen\n- **3.2 VoiceScript** \u2014 chapter order and exact spoken text per part; this is how chapter start words are derived\n- **3.5 Captions, as an indexed transcript** \u2014 `[0]word [1]word ...` plus a full list of per-word start times, index-aligned. You get starts, not the raw `{text,start,end}` array; word `end` is never read downstream. Anchor beats by the bracketed index and let the assembler resolve seconds. Never invent a timestamp.\n\n### Timeline format \u2014 anchor by WORD INDEX, not seconds\n```js\nEPISODE  = { id, title, totalDur, fps }\ncaptions = \"EP###.5_Captions_v1.json\"          // path, not the array \u2014 you never write WORDS\nCHAPTERS = [ { n, title, startWord }, ... ]\nTIMELINE = [ { startWord, endWord, design, data, ch, fit? }, ... ]\n```\n\n- **`startWord`** \u2014 the bracketed index of the transcript word this beat/chapter starts on. The assembler resolves this to seconds. **G6 cannot fail on a word-anchored beat** \u2014 there is no arithmetic left to get wrong.\n- **Deriving chapter starts:** match each 3.2 part's opening phrase against the transcript, then take the index of the chapter's **first spoken word**, not the first word of the phrase you matched on. A chapter opening with a number \u2014 \"600,000 dollars. Let's finally assemble\" \u2014 starts at the `600,000`, not at `Let's`. Whisper also drops words, so an opener may be missing its first word or two; anchor to what is actually in the transcript.\n- **`endWord`** \u2014 optional; sets the beat's duration as the gap to that word. Omit to give `dur` directly instead.\n- **Never write a literal `t` or seconds value.** If you don't know which bracketed index a moment falls on, pick the nearest one from the ruler \u2014 do not estimate a timestamp.\n- `design` \u2014 adapter ID from the indexes, e.g. `\"D-003\"`.\n- `data` \u2014 must match that design's **data shape** column exactly. Never invent a key. A wrong key throws at build and the beat renders blank.\n- `fit` \u2014 `\"scale\"` (default) stretches the design to fill its slot; `\"native\"` plays at authored speed. A 6s design dropped into a 2s slot at native speed plays only its first third and looks broken.\n- Chapter cards are `S-*` designs and transitions are `X-*` beats straddling a boundary. Nothing is special-cased.\n\n### Data binding \u2014 the brief is canon\nEvery on-screen figure comes from the **3.1 Strategy Brief**, never from the transcript. Whisper mis-hears numbers, and a transcription error rendered at 200pt is the most expensive kind of mistake this stage can make. Where transcript and brief disagree, bind the brief and list the discrepancy under WHAT I AM UNCERTAIN ABOUT.\n\n### Build\n```\nnode _SH_assemble.js episode.json <artifact filename> [captions.json]\n```\nThe assembler reads `WORDS` from the captions file (via `captions` in episode.json, or the third argument) and resolves every `startWord`/`endWord` to seconds before injection. An out-of-range index fails the build \u2014 with every problem listed at once \u2014 rather than silently clamping. `MPD_ADAPTERS` points at the adapter folder. Only referenced designs are bundled, so a typical episode lands at 300\u2013500 KB rather than carrying all 973. The toolkit contains `$'`, which `String.replace` treats as a special pattern \u2014 the assembler uses function replacers, keep them.\n\n### Validator \u2014 green or not ready\nRuns at boot, reports on screen, sets `window.__ISSUES__`. Five checks: `BUILD` (data did not match design) \u00b7 `G6` (beat start off a word boundary \u2014 unreachable if word-anchored) \u00b7 `GAP` (>0.6s blank) \u00b7 `CH` (chapter order, word-boundary, or range) \u00b7 `CHREF` (a beat's `ch` names no real chapter, or precedes it). **Any issue means the file is neither exportable nor ratable.**\n\nOne blind spot remains \u2014 a `startWord` that is in range but simply the wrong word: nothing automated can see that, check it by eye against the transcript.\n\n### Frame fill\n`_GD_06` tiers every design A/B/C by how much of a 1080p frame it actually fills. Prefer A and B for hero beats. Narrative (N), Diagrams (G) and Charts (C) are the most reliable categories; some designs pass every gate while occupying roughly the left-centre third and reading thin at full-screen scale.\n\n### Brand tokens \u2014 palette + fonts only\n```\n--canvas:#E4DDD0 \u00b7 --teal:#2DB89D \u00b7 --amber:#F5C518 \u00b7 --red:#E63946 \u00b7 --ink:#2A2520 \u00b7 --slate:#8BA8B5\n```\nBarlow Condensed 900 (headlines/stat slams/chapter titles) \u00b7 Barlow 400/700 (body/labels) \u00b7 DM Mono 400/500 (data/metadata). Red for reveal/shock values, amber for default data, teal for positive/aha.\n\n### Asset manifest (G7) \u2014 required\nList every design used with label NEW / REUSE / VARIANT. REUSE references the asset library by ID; NEW entries get appended in Stage 3.10. If the topic implies international comparison, country spotlight panels are required.\n\n### Output\nThe artifact filename shown above \u2014 self-contained, opens offline, fonts base64-embedded (an SVG loaded as an Image cannot fetch, and without embedded faces the rasteriser silently falls back to serif and every text measurement is wrong). Deliver `episode.json` alongside it so the file can be rebuilt without redoing the timeline.",
   '3.7': "### Manual stage \u2014 master render via companion tool\nUse **mpd-render-web** at https://ealihasnain.github.io/mpd-render-web/ (WebCodecs, in-browser, streams to disk).\n\nThis replaces the retired `mpd-av-merger`, which stream-copied VP9 into an MP4 container and produced files VLC refused to play. mpd-render-web encodes and muxes in one pass and never writes VP9 into MP4.\n\n### Workflow\n1. Open the render studio\n2. Load the 3.6 video HTML and the 3.4 master audio. The timeline, chapters and beats are read from the HTML \u2014 no episode.json needed\n3. **Inspect** \u2014 two seconds plus a short encoder benchmark. Confirm: shell version, `__ISSUES__` empty, rasteriser parity, and the projected runtime. The benchmark measures every encoder configuration on this machine rather than trusting the browser's default, which on EP002 chose a software encoder and turned a 3-minute job into 30\n4. **Contact sheets** \u2014 minutes, not an hour, and the only check in the pipeline that looks at whether text fits its box. Read them chapter by chapter\n5. **Render master.** Chrome asks where to save before rendering starts, then writes as it goes. Keep the tab focused\n6. Spot-check A/V sync at 3 random points: word boundaries align with stat slam appearances within \u00b150ms\n\n### Container\nH.264 + AAC in MP4 where the browser supports it, VP9 + Opus in WebM otherwise. Both are valid YouTube masters. If Inspect reports `H.264 no`, do not force MP4.\n\n### QA gates\n- **G8 \u00b7 A+V sync \u226450ms** at all sampled checkpoints, and output duration matching the shell's total\n- **G9 \u00b7 Final master loudness \u221214 LUFS \u00b7 \u22121 dBTP** \u2014 the audio duck is applied from the shell's own envelope, so picture fade and voice dip land together\n- Frame count sanity: `total_seconds \u00d7 fps`. A count far off that means the encode dropped frames\n\n### Output\nEP###.7_MasterVideo_v1.mp4 \u2014 ready for YouTube upload after thumbnail (3.8) + upload pack (3.9). Update the stage output: runtime, frame count, encoder used, final loudness, sync drift samples, file size.",
-  '3.8': "### Output \u2014 single 1280\u00d7720 PNG thumbnail\nSelf-contained design optimized for: in-feed CTR at 120\u00d768px scale + click-curiosity without clickbait.\n\n### 3-element rule (G10) \u2014 REQUIRED\nEvery MPD thumbnail contains exactly three elements:\n1. **Object/face image** (left side, ~40% width) \u2014 the topic anchor. Faceless channel so this is an object: stack of cash, broken piggy bank, chart icon, building silhouette. Never a real person's face; use a portrait card from asset library or a vector silhouette.\n2. **Bold number** (center, full vertical height) \u2014 most shocking stat from the script in giant Barlow Condensed 900. Examples: \"$47,000\", \"78%\", \"3 minutes\", \"12x\".\n3. **1-3 word verb/label** (right or under number) \u2014 what the number means. Examples: \"lost\", \"wasted\", \"saved\", \"hidden\", \"missed\". DM Mono or Barlow Condensed 700.\n\n### Color rules\n- Number in **amber #F5C518** for default\n- Number in **red #E63946** if reveal is shocking/negative\n- Verb in **ink #2A2520** (text-stroke for legibility against canvas)\n- Background in **canvas #E4DDD0** with subtle grain \u2014 never solid white, never gradient\n\n### Legibility test\nOpen the 1280\u00d7720 PNG, resize browser tab to 120\u00d768px. Number + verb must still read at that scale. If you can't read either, design fails.\n\n### Composition\n- Asymmetric weighting (heavier on right or left \u2014 never centered) creates motion\n- 12-16px padding from edges\n- Slight 1-2\u00b0 rotation on number for energy (optional but works)\n- Brand mark in corner: tiny \"MPD\" in DM Mono 9px, slate color\n\n### Workflow\n- Claude generates the design as inline SVG or HTML/CSS for screenshot at 1280\u00d7720, OR a detailed brief for Figma/Canva production\n- Final delivery: PNG file 08_Thumbnail_v1.png\n\n### Output\n08_Thumbnail_v1.png (1280\u00d7720, sRGB). Update Cockpit output: chosen number, verb, asset used (NEW or REUSE from library), 1-2 sentence design rationale.",
+  '3.8': `### Output — three A/B candidates, not one
+
+YouTube Test and Compare accepts three thumbnails. This stage produces three genuinely different candidates, each 1280x720 PNG plus its editable source. Three variations of one idea is a wasted test. Three different ideas is a real one.
+
+### Ground inversion (locked, v3.10)
+
+Ink 2A2520 is the ground. Canvas E4DDD0 and Amber F5C518 are the figures. The beige ground used through EP001 and EP002 separates from a feed at roughly 1.6 to 1 in luminance; amber on ink is about 9 to 1 and survives dark mode. The palette is unchanged, the hierarchy is inverted. No colour outside the six brand tokens, ever.
+
+### The three-element system (G10) — every candidate
+
+Exactly three elements. There is no fourth.
+
+1. ONE object or silhouette. At least 25 percent of frame area, with a 3 to 1 luminance edge against the ground. Never a real person's face, never a stock photograph. Vector silhouette, flat object, or a chart form.
+2. ONE number. The most load-bearing figure in the episode, taken from the 3.1 Strategy Brief and from nowhere else. Barlow Condensed 900. Amber by default, Red when the reveal is a loss.
+3. ONE to three words. What the number means. Barlow Condensed 700 or DM Mono 500, in Canvas.
+
+Plus the MPD mark: DM Mono, 9px, Slate, one corner. The mark does not count as an element.
+
+### Text budget (hard)
+
+Four words maximum including the number's unit. Fourteen characters maximum of word-text. Six glyphs maximum in the number. Over budget is a G10 fail, not a style note.
+
+### Archetype — a different one per candidate
+
+- **Number Slam.** One figure at 60 percent of frame height, object bleeding off one edge.
+- **Two-State Split.** Vertical division, then and now, one number each, the second in Red.
+- **Object plus Redaction.** The subject partly blacked out by an ink bar, the number intact.
+- **Broken Line.** A single line form that snaps, drops or stops, the number sitting at the break.
+- **Question Card.** Three words as a question, the number as the only answer offered.
+
+Bias by pillar: P1 and P3 toward Redaction and Broken Line, P2 toward Two-State, P4 toward Object, P5 toward Question Card.
+
+### One open loop, exactly one
+
+Every candidate carries exactly one curiosity device: a redaction bar, a contradiction pair (two numbers that cannot both be true), an interrupted or broken object, or an arrow leaving the frame. Zero devices reads as a chart. Two reads as noise.
+
+### Title tension (hard)
+
+The thumbnail text and the eventual video title share zero content words. The title states and the thumbnail asks, or the reverse. Propose a working title alongside each candidate so Stage 3.9 can be checked against it.
+
+### Composition
+
+Asymmetric weight, never centred. Sixteen pixel safe margin. Keep the lower right corner clear — the last 90x40 pixels carry the duration stamp. One to two degrees of rotation is permitted on the number and on nothing else.
+
+### The three tests — run all three, report all three
+
+1. **168 pixel squint.** Render at 168x94, the suggested-sidebar size, and look for under one second. If the number is not the first thing read, the candidate fails.
+2. **Grayscale separation.** Desaturate. The subject must still separate from the ground. Colour is never allowed to be the only carrier of structure.
+3. **Competitor row.** Place the candidate beside four real thumbnails from the target keyword search. If it disappears into the row it fails, however clean it looks alone.
+
+### Figures are canonical
+
+Every number comes from the 3.1 Strategy Brief. Never from the caption transcript, never rounded for effect, never invented to fit a composition. If no figure in the brief will carry a thumbnail, say so and propose a non-numeric archetype rather than fabricating one.
+
+### Asset reuse
+
+The asset registry is inlined in this payload. Reuse a registered silhouette or object where one fits and name its id. Mark anything new as NEW so Stage 3.10 can register it.
+
+### Delivery
+
+Three PNGs at 1280x720 sRGB, under 2 MB each, plus the editable source for each saved under the same stem. Report per candidate: archetype, the number and where it sits in the brief, the words, the open-loop device, asset id or NEW, and all three test results.`,
   '3.9': "### Output \u2014 YouTube upload metadata package\nSingle markdown file 09_UploadPack_v#.md containing everything needed to publish.\n\n### Title\n- **\u226460 characters** (hard limit \u2014 anything more truncates in feed)\n- **Keyword in first 20 characters**\n- **Curiosity gap** without clickbait \u2014 promise a reveal, not a guarantee\n- Pattern that works: \"Why [common belief] [unexpected outcome]\" or \"The Hidden [thing] Behind [familiar thing]\"\n- Examples:\n  - \u2713 \"Why 'Pay Yourself First' Doesn't Work for Most People\" (52 chars, keyword first)\n  - \u2717 \"I CANNOT BELIEVE What Financial Advisors Don't Tell You About Saving Money!!!\" (clickbait)\n\n### Description (first 2 lines = search snippet)\n- **First 2 lines** (\u2248160 chars) must function as a search-result snippet \u2014 keyword in line 1, hook in line 2\n- After 2 lines: 1-2 paragraph summary, then chapter timestamps\n- Chapter timestamps as `00:00 Hook`, `00:45 Chapter 1 \u2014 Title`, etc., matching Stage 3.1 chapter list\n- End with: data sources note (\"Sources cited: [list 3-5 primary sources]\"), end-screen plan teaser\n\n### Tags\n- **5-8 tags** total \u2014 fewer is better for relevance signal\n- Lead with primary keyword from Stage 3.1\n- Include 2-3 broader pillar tags (e.g. \"personal finance\", \"behavioral economics\")\n- Include 1-2 specific topic tags\n- Avoid generic spam tags (\"money\", \"finance\", \"investing\" alone are too broad)\n\n### End-screen plan\n- 20s end-screen\n- Position: 1 video card (most-related previous MPD video) + 1 subscribe button\n- Voiceover for end-screen: short, no \"smash that like button\" \u2014 instead \"If you found a pattern here, the description has sources. See you Saturday.\"\n\n### Pinned comment template\n1-2 sentences clarifying the strongest data point with source, OR a soft prompt asking which mechanism most surprised the viewer.\n\n### Output\n09_UploadPack_v1.md with sections: Title (with char count) \u00b7 Description \u00b7 Tags \u00b7 Chapter Timestamps \u00b7 End-Screen Plan \u00b7 Pinned Comment. Update Cockpit output: chosen title, primary keyword, tag count.",
   '3.10': "### Input \u2014 outputs from 3.1 through 3.9 of this episode\nThe full episode artifact set. This stage is the \"library propagation\" step.\n\n### Output \u2014 markdown delta listing what to add/update in the corpus\nSingle file 10_LibraryDelta_v1.md describing changes to be made to the standing knowledge base.\n\n### Sections to produce\n\n**1. New datapoints to add to corpus** \u2014 any DP from Stage 3.1 worth reusing in future videos (international comparisons, durable structural numbers, behavioral research stats). For each: `[DP-XYZ] Stat \u2014 Source, Year` + originating chapter/topic. Skip topic-specific ephemeral numbers.\n\n**2. New visual assets to register** \u2014 any NEW (not REUSE) asset from Stage 3.6's manifest. For each: asset ID \u00b7 type (portrait card / country panel / brand badge / stat-slam template / etc.) \u00b7 description \u00b7 file path or inline reference. These get added to the asset library so 3.6 in future episodes can mark them REUSE.\n\n**3. New opener variants used** \u2014 if Stage 3.2 introduced a fresh opener pattern beyond standard codes (N / AN / SV / IM / Q), document for the opener variety bank.\n\n**4. Voice canon variations** \u2014 any new phrasing that worked well and matches the canon (positive examples to amplify) or any phrasing to add to slop blocklist (G12) because it appeared in a draft and got flagged.\n\n**5. Reframe + mechanism inventory** \u2014 record this episode's reframe (where it sat, what it dismantled) and mechanism (the named principle: Thaler / Kahneman-Tversky / Laibson / Akerlof / etc.). Building this inventory across episodes prevents repetition.\n\n**6. Changelog entry** \u2014 one paragraph for the running changelog: date \u00b7 D### \u00b7 topic \u00b7 pillar \u00b7 final word count \u00b7 self-rating \u00b7 noteworthy production wins or failures.\n\n### Output\n10_LibraryDelta_v1.md \u00b7 structured for manual append to the standing corpus. After user reviews and accepts the deltas, the corpus reference gets updated and the episode is marked complete. The user then publishes to YouTube and triggers next-episode promotion.",
 };
@@ -2633,6 +2717,8 @@ function renderEpisode(){
   const _b34 = list.querySelector('[data-stage="3.4"] .stage-body'); if (_b34) _b34.innerHTML = mixBody3_4(ep);
   const _b35 = list.querySelector('[data-stage="3.5"] .stage-body'); if (_b35) _b35.innerHTML = srtBody3_5(ep);
   const _b37 = list.querySelector('[data-stage="3.7"] .stage-body'); if (_b37) _b37.innerHTML = renderBody3_7(ep);
+  const _b38 = list.querySelector('[data-stage="3.8"] .stage-body');
+  if (_b38){ _b38.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); thumbRecalc(); }
 }
 
 function toggleStage(sid){
@@ -2818,6 +2904,182 @@ function srtBody3_5(ep){
 }
 function srtCopyName(){ const ep=activeEpisode(); if(!ep) return; const fn=_epToken(ep.day)+'.5_Captions_v1'; navigator.clipboard.writeText(fn).then(()=>toast('Filename copied · '+fn)); }
 function srtMarkComplete(){ const ep=activeEpisode(); if(!ep) return; markStagePassed('3.5'); }
+
+// ── Stage 3.8 · thumbnail A/B UI (v3.10.0) ──────────────────────────
+// Five steps, per Ali's structure: inputs · five tool payloads · score the
+// 15 samples · name the three winners · complete. The scorecard exists
+// because "compare the outputs" without a rubric is vibes, and because the
+// per-tool totals accumulate in the gist — after ten episodes they say which
+// tool is actually earning its subscription.
+function thumbState(ep){
+  const st = ep.stages['3.8'];
+  if (!st.thumb) st.thumb = { scores:{}, picks:[] };
+  if (!st.thumb.scores) st.thumb.scores = {};
+  if (!Array.isArray(st.thumb.picks)) st.thumb.picks = [];
+  return st.thumb;
+}
+function thumbKey(tool, i){ return tool + '-' + i; }
+function thumbLabelFor(tool){ return (THUMB_VARIANTS[tool] ? THUMB_VARIANTS[tool].label : tool); }
+function thumbRowTotal(t, key){ return (t.scores[key] || []).reduce((x,y)=> x + (parseInt(y)||0), 0); }
+function thumbRanked(t){
+  const rows = [];
+  THUMB_TOOLS.forEach(tool => { for (let i=1;i<=3;i++){ const k = thumbKey(tool,i); rows.push({key:k, tool, i, total:thumbRowTotal(t,k)}); } });
+  return rows.filter(r => r.total > 0).sort((a,b) => b.total - a.total);
+}
+function thumbSetScore(tool, i, ci, val){
+  const ep = activeEpisode(); if (!ep) return;
+  const t = thumbState(ep); const k = thumbKey(tool,i);
+  if (!t.scores[k]) t.scores[k] = [0,0,0,0,0];
+  let v = parseInt(val); if (isNaN(v)) v = 0;
+  t.scores[k][ci] = Math.max(0, Math.min(5, v));
+  markDirty(); thumbRecalc();
+}
+function thumbRecalc(){
+  const ep = activeEpisode(); if (!ep) return;
+  const t = thumbState(ep);
+  const ranked = thumbRanked(t);
+  const topKeys = new Set(ranked.slice(0,3).map(r => r.key));
+  THUMB_TOOLS.forEach(tool => { for (let i=1;i<=3;i++){
+    const k = thumbKey(tool,i);
+    const tot = document.getElementById('sct-'+k); if (tot) tot.textContent = thumbRowTotal(t,k);
+    const row = document.getElementById('scr-'+k); if (row) row.classList.toggle('top', topKeys.has(k));
+  }});
+  const hint = document.getElementById('sc-hint');
+  if (hint) hint.textContent = ranked.length
+    ? 'Leading · ' + ranked.slice(0,3).map(r => thumbLabelFor(r.tool)+' #'+r.i+' ('+r.total+')').join('  ·  ')
+    : 'score at least three candidates to promote';
+}
+function thumbPromoteTop3(){
+  const ep = activeEpisode(); if (!ep) return;
+  const t = thumbState(ep);
+  const ranked = thumbRanked(t);
+  if (ranked.length < 3){ toast('Score at least three candidates first.','warn'); return; }
+  t.picks = ranked.slice(0,3).map(r => ({key:r.key, tool:r.tool, i:r.i, total:r.total}));
+  markDirty(); thumbRerender();
+  toast('Top three promoted → v1 · v2 · v3');
+}
+function thumbClearPicks(){
+  const ep = activeEpisode(); if (!ep) return;
+  thumbState(ep).picks = []; markDirty(); thumbRerender();
+}
+function thumbFilename(ep, n){ return _epToken(ep.day) + '.8_Thumbnail_v' + n + '.png'; }
+function thumbCopyName(n){
+  const ep = activeEpisode(); if (!ep) return;
+  const fn = thumbFilename(ep, n);
+  navigator.clipboard.writeText(fn).then(()=> toast('Filename copied · ' + fn));
+}
+function thumbRerender(){
+  const ep = activeEpisode(); if (!ep) return;
+  const el = document.querySelector('[data-stage="3.8"] .stage-body');
+  if (el){ el.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); thumbRecalc(); }
+}
+function thumbMarkComplete(){
+  const ep = activeEpisode(); if (!ep) return;
+  const st = ep.stages['3.8']; const t = thumbState(ep);
+  if (t.picks.length < 3 && !confirm('Fewer than three candidates picked. YouTube Test and Compare wants three. Mark complete anyway?')) return;
+  if (t.picks.length){
+    // Rating comes from the scorecard, not a self-rating JSON — this stage is
+    // judged by comparison, not by the model that produced it.
+    st.rating = Math.max(1, Math.min(10, Math.round(t.picks[0].total / 25 * 10)));
+    st.artifact = thumbFilename(ep, 1);
+    st.output = 'A/B set · ' + t.picks.map((pk,ix) => 'v'+(ix+1)+' '+thumbLabelFor(pk.tool)+' #'+pk.i+' ('+pk.total+'/25)').join(' · ')
+              + ' · scored across ' + thumbRanked(t).length + ' of 15 samples';
+  }
+  markStagePassed('3.8');
+}
+function thumbBody3_8(ep){
+  const st = ep.stages['3.8']; const t = thumbState(ep);
+  const assetCount = (state.assets || []).length;
+
+  const cards = THUMB_TOOLS.map(tool => {
+    const v = THUMB_VARIANTS[tool];
+    const cls = (tool === 'design') ? 'tv-card rec' : 'tv-card';
+    const flag = (tool === 'design') ? ' · start here' : (tool === 'recraft' ? ' · vector fallback' : '');
+    return `<div class="${cls}">
+      <div class="tv-h">${v.label}</div>
+      <div class="tv-sub">${v.sub}${flag}</div>
+      <div class="tv-note">${v.note}</div>
+      <div class="tv-btns">
+        <button class="btn primary tiny" onclick="copyPayload('3.8','${tool}')">📋 Copy</button>
+        <button class="btn ghost tiny" onclick="downloadPayload('3.8','${tool}')" title="Saves as .md — attach in a fresh chat. Immune to paste truncation.">⬇ .md</button>
+        <button class="btn ghost tiny" onclick="previewPayload('3.8','${tool}')">Preview</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  const heads = THUMB_CRIT.map(c => `<th title="${c[1]}">${c[0]}</th>`).join('');
+  const rows = THUMB_TOOLS.map(tool => {
+    return [1,2,3].map(i => {
+      const k = thumbKey(tool,i);
+      const sc = t.scores[k] || [0,0,0,0,0];
+      const cells = THUMB_CRIT.map((c,ci) =>
+        `<td><input type="number" min="0" max="5" value="${sc[ci]||0}" onchange="thumbSetScore('${tool}',${i},${ci},this.value)"></td>`).join('');
+      return `<tr class="sc-row" id="scr-${k}">
+        <td class="l sc-tool">${i === 1 ? thumbLabelFor(tool) : ''} <span style="color:var(--ink-soft)">#${i}</span></td>
+        ${cells}
+        <td class="sc-tot" id="sct-${k}">${thumbRowTotal(t,k)}</td>
+      </tr>`;
+    }).join('');
+  }).join('');
+
+  const picksHtml = t.picks.length
+    ? t.picks.map((pk,ix) => `<div class="pick-row">
+        <div class="pick-slot">v${ix+1}</div>
+        <div style="flex:1;min-width:0">
+          <button class="btn ghost tiny tts-copybtn" onclick="thumbCopyName(${ix+1})" title="copy full filename">⧉ ${thumbFilename(ep, ix+1)}</button>
+          <div class="pick-meta">${thumbLabelFor(pk.tool)} · sample #${pk.i} · scored ${pk.total}/25</div>
+        </div>
+      </div>`).join('')
+    : `<div style="font-size:12.5px;color:var(--ink-soft);font-style:italic;padding:8px 0">No candidates promoted yet. Score the samples in step 3, then hit <b>Promote top three</b>.</div>`;
+
+  return `
+    <div class="flow-step-h" style="border-top:0;padding-top:2px"><span class="fn">1</span><span class="ft">Inputs</span><span class="fs">brief required · figures are canonical</span></div>
+    <div class="input-list" id="input-list-3.8" style="font-size:12.5px;margin-bottom:10px">
+      <div class="input-loading" style="color:var(--ink-soft);font-style:italic">Loading input status...</div>
+    </div>
+    <div style="font-size:12.5px;line-height:1.55;color:var(--ink-soft)">
+      Every number on a thumbnail comes from the 3.1 brief and nowhere else — never the caption transcript, never rounded for effect.
+      Asset registry: <b>${assetCount}</b> entr${assetCount === 1 ? 'y' : 'ies'}, inlined into all five payloads for reuse.
+      Ground is <b>Ink #2A2520</b> from v3.10 — figures in Canvas and Amber.
+    </div>
+    <div class="payload-actions"><button class="btn ghost tiny" onclick="refreshInputStatus('3.8')" title="Re-scan workspace">↻ Refresh inputs</button></div>
+
+    <div class="flow-step-h"><span class="fn">2</span><span class="ft">Five payloads, five tools</span><span class="fs">3 candidates each · 15 samples total</span></div>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px">Each payload is written for how that tool actually takes direction — code-exact hex for the two that write code, plain-language art direction and literal quoted text for the two that generate images. Run all five, ask each for three archetypes.</p>
+    <div class="tv-grid">${cards}</div>
+
+    <div class="flow-step-h"><span class="fn">3</span><span class="ft">Score the 15, take the top three</span><span class="fs">0–5 per criterion · 25 max</span></div>
+    <div class="sc-wrap">
+      <table class="sc-table">
+        <thead><tr><th class="l">Sample</th>${heads}<th>Σ</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="sc-legend">
+      ${THUMB_CRIT.map(c => `<b>${c[0]}</b> ${c[1]}`).join('<br>')}
+    </div>
+    <div class="row" style="margin-top:10px;gap:8px;align-items:center">
+      <button class="btn primary tiny" onclick="thumbPromoteTop3()">⬆ Promote top three</button>
+      ${t.picks.length ? `<button class="btn ghost tiny" onclick="thumbClearPicks()">Clear picks</button>` : ''}
+      <span id="sc-hint" style="font-family:var(--font-mono);font-size:10px;color:var(--ink-soft)"></span>
+    </div>
+
+    <div class="flow-step-h"><span class="fn">4</span><span class="ft">Save the three</span><span class="fs">1280×720 PNG + editable source, same stem</span></div>
+    <div class="thumb-picks">${picksHtml}</div>
+    <div style="font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.55">
+      Save each PNG and its source (.svg, .canvas or .recraft) under the same stem into
+      <code>${episodeFolder(ep.day, ep.topic_short)}/</code>. Upload all three to YouTube Test &amp; Compare — v1 is the default the test runs against.
+    </div>
+
+    <div class="flow-step-h"><span class="fn">5</span><span class="ft">Mark complete</span><span class="fs">rating is taken from the winning score</span></div>
+    <div class="row"><button class="btn primary" onclick="thumbMarkComplete()">${st.status === 'passed' ? '✓ Completed' : 'Mark complete'}</button></div>
+    <div class="learnings-bar" style="margin-top:22px">
+      <h3><span>Learnings · 3.8 <span class="hint">included in every future 3.8 payload · use <code>Active Rule AR-###:</code> to promote a line to a hard constraint</span></span></h3>
+      <textarea rows="4" oninput="updateLearning('3.8',this.value)" onblur="blurLearning('3.8')">${escapeHtml(state.learnings['3.8']||'')}</textarea>
+    </div>
+  `;
+}
+
 
 async function refreshInputStatus(sid){
   const ep = activeEpisode(); if (!ep) return;
@@ -3204,7 +3466,100 @@ function resetEpisode(){
 // ════════════════════════════════════════════════════════════════════
 //  PAYLOAD BUILDER
 // ════════════════════════════════════════════════════════════════════
-async function buildPayload(sid){
+
+// ── Stage 3.8 · per-tool payload variants (v3.10.0) ──────────────────
+// One payload cannot serve five tools. Claude Design and Claude chat WRITE
+// CODE, so their payload wants exact hex, font stacks and viewBox geometry.
+// Gemini and ChatGPT GENERATE IMAGES, so theirs wants art direction in plain
+// language, literal quoted text and negative constraints — both silently
+// ignore hex lists. Recraft is vector-native with a lockable palette, which
+// is why it is the fifth: its winner is editable into v2/v3 rather than
+// re-rolled, and it cannot drift off the six brand tokens.
+const THUMB_VARIANTS = {
+  design: {
+    label: 'Claude Design',
+    sub: 'canvas · editable · code-exact',
+    note: 'Best fidelity to brand tokens. Produces an editable canvas you can nudge after the A/B result comes back.',
+    sop: `### Tool · Claude Design
+
+You are producing an editable design on a canvas, not a description of one. Build all three candidates as separate 1280x720 frames on a single canvas so they compare side by side.
+
+- Work in exact hex. Ground Ink 2A2520. Figures Canvas E4DDD0 and Amber F5C518. Red E63946 for loss. Teal 2DB89D and Slate 8BA8B5 sparingly.
+- Type: Barlow Condensed 900 for the number, Barlow Condensed 700 or DM Mono 500 for the words, DM Mono 400 at 9px for the MPD mark.
+- Build every object from vector primitives. No raster imagery, no gradients, no drop shadows, no bevels, no glow. Flat fills and hard edges only.
+- Set the number's cap height between 45 and 62 percent of frame height depending on archetype.
+- Export each frame as PNG at exactly 1280x720 and keep the canvas as the editable source.
+- Add a fourth frame showing all three candidates at 168x94 side by side. That frame is the squint test — do not skip it.`
+  },
+  chat: {
+    label: 'Claude chat',
+    sub: 'SVG/HTML artifact · self-testing',
+    note: 'Builds the squint and grayscale tests into the deliverable so they run by opening the file. Use Opus.',
+    sop: `### Tool · Claude chat
+
+Produce one self-contained HTML file containing three 1280x720 SVG candidates, each in its own labelled container, plus a strip rendering all three at 168x94 for the squint test and a duplicate strip under a CSS grayscale filter for the separation test. Build both tests into the file so they run by opening it rather than by hand.
+
+- Every SVG element pre-built in the markup. No JavaScript-generated geometry.
+- Load Barlow Condensed, Barlow and DM Mono from Google Fonts with a condensed-sans fallback stack. The layout must not collapse if a font is missing at screenshot time.
+- Never apply clip-path and transform to the same element. Outer group clips, inner group transforms.
+- Each candidate gets an exact viewBox of 0 0 1280 720 and no CSS scaling on its export container.
+- Include a one-line screenshot instruction per candidate, and save each SVG as the editable source beside its PNG.`
+  },
+  gemini: {
+    label: 'Gemini',
+    sub: 'image gen · art direction',
+    note: 'Strongest at flat editorial illustration. Weakest at exact in-image text, so the text constraint is stated twice.',
+    sop: `### Tool · Gemini image generation
+
+Write the request as art direction in plain language, not as a spec sheet. Image models ignore hex codes, so name the colour and give the hex only as a parenthetical.
+
+- Open with the composition in one sentence, then the subject, then the type.
+- State the text literally and in quotes once, giving the exact number and the exact words. Repeat it once at the end as a constraint line. Text drift is the dominant failure mode with this tool.
+- Describe the ground as a very dark warm near-black, the number as a saturated golden yellow, the words as a warm off-white.
+- Say: flat vector illustration, hard edges. Ban: gradient, photorealism, glow, lens flare, 3D render, watermark, any additional text.
+- Ask for 16:9 and upscale to 1280x720 afterwards rather than asking for pixel dimensions.
+- Produce three separate prompts, one per archetype, each fully self-contained. Never ask for three images in one prompt.`
+  },
+  gpt: {
+    label: 'ChatGPT',
+    sub: 'image gen · text-reliable',
+    note: 'Most reliable in-image typography of the image models. Follows positional layout language well; degrades on long prompts.',
+    sop: `### Tool · ChatGPT image generation
+
+Same three archetypes, phrased for a model that renders in-image text reliably and follows layout instructions positionally.
+
+- Lead with the canvas: a 16:9 poster on a very dark warm near-black background.
+- Describe placement in explicit regions — left third, centre, lower right — rather than percentages.
+- Quote the exact text once, then close with a line reading: the image must contain exactly this text and nothing else.
+- Ban gradients, glows, photorealism, drop shadows, borders, watermarks, additional words, additional numbers, and faces.
+- Ask for flat editorial vector poster styling with heavy condensed sans type.
+- Produce three separate prompts and keep each under 150 words. Longer prompts measurably degrade text fidelity here.`
+  },
+  recraft: {
+    label: 'Recraft V3',
+    sub: 'vector · palette-locked · SVG out',
+    note: 'The fifth tool. Only one in the set returning true editable SVG with a locked palette, so its winner becomes v2 and v3 by editing rather than re-rolling.',
+    sop: `### Tool · Recraft V3 (vector)
+
+Recraft is the only tool in this set that returns true editable vector output under a locked palette. That is why it is here: its winner can be edited into a second and third candidate instead of re-rolled, and it cannot drift off the six brand tokens.
+
+- Style: Vector Illustration, flat, no texture, no shading.
+- Supply the palette explicitly as the six brand hexes and lock it before generating.
+- Keep type out of the generated asset. Generate the object or silhouette as vector, then set the number and the words in Barlow Condensed over it. Vector tools letterspace unpredictably.
+- Request a transparent background so the Ink ground is composited underneath at exact hex.
+- Export SVG as the editable source and PNG at 1280x720 as the deliverable.`
+  }
+};
+const THUMB_TOOLS = ['design','chat','gemini','gpt','recraft'];
+const THUMB_CRIT = [
+  ['SEP','Separation from a dark and a light feed at a glance'],
+  ['CUR','Curiosity — does the open loop actually open'],
+  ['LEG','Legible at 168x94 in under one second'],
+  ['BRD','Brand fidelity — tokens, type, three elements, text budget'],
+  ['DST','Distinct from the other two candidates and from competitors']
+];
+
+async function buildPayload(sid, variant){
   const ep = activeEpisode();
   const meta = STAGE_META[sid];
   const pillarMap = {P1:'Why Everyone Gets X Wrong (30% · PRIMARY · word band 1,150–1,300)',
@@ -3333,6 +3688,20 @@ async function buildPayload(sid){
       inputDiagnostics.push(`  ${inp.required ? '✗' : '○'} ${inp.artifact}_v#.${inp.ext} MISSING (${reason})`);
     }
   }
+  // Stage 3.8 · per-tool addendum + inlined asset registry. The old SOP told
+  // Claude to "reuse from the asset library" while the payload never showed
+  // it — an instruction that was physically impossible to follow.
+  let variantBlock = '';
+  if (sid === '3.8'){
+    const v = (typeof THUMB_VARIANTS !== 'undefined' && THUMB_VARIANTS[variant]) ? THUMB_VARIANTS[variant] : null;
+    if (v) variantBlock = '\n---\n\n' + v.sop + '\n';
+    const assets = (state.assets || []).filter(a => ['portrait','stat_template','other','brand_badge'].includes(a.type) || true);
+    const assetLines = assets.length
+      ? assets.map(a => `- \`${a.id}\` · ${a.type} · **${a.name}** — ${a.description || 'no description'}${a.source_episode ? ' _(first used '+a.source_episode+')_' : ''}`).join('\n')
+      : '_(registry empty — everything you use is NEW and must be reported as such for Stage 3.10)_';
+    variantBlock += `\n---\n\n## Asset registry (reuse before creating)\n\n${assetLines}\n`;
+  }
+
   const inputsSection = inputs.length
     ? `## Inputs from prior stages\n\n${inputBlocks.join('\n\n')}\n\n---\n\n`
     : '';
@@ -3369,7 +3738,7 @@ async function buildPayload(sid){
       G7:'Asset manifest complete (NEW vs REUSE labelled) · country panels required if topic implies international comparison',
       G8:'A+V sync ≤50ms · loudness preserved · trim-to-shortest applied · 0s offset · replace audio mode',
       G9:'Final master loudness −14 LUFS · −1 dBTP · no audible MP3 compression artifacts',
-      G10:'3-element rule (face/object + bold number + 1-3 word verb) · readable at 120×68 px · amber for number · red for reveal · ink for verb',
+      G10:'Ink ground · 3 elements (one object ≥25% frame + one number + 1–3 words) · text budget 4 words / 14 chars / 6 glyphs · exactly one open-loop device · legible at 168×94 · survives grayscale · 3 candidates on 3 different archetypes',
       G11:'Title ≤60 chars · keyword in first 20 chars · curiosity gap not clickbait · description first 2 lines = search snippet · 5–8 tags · chapter timestamps',
       G12:'No blocklist phrasings: delve · dive into · in today\'s world · game-changer · revolutionary · tapestry · realm · landscape (as metaphor) · "smash that like button" · "they don\'t want you to know"',
     };
@@ -3457,7 +3826,7 @@ ${gatesHTML}
 ## Stage SOP · ${sid}
 
 ${(typeof STAGE_GUIDES !== 'undefined' && STAGE_GUIDES[sid]) ? fillInfra(STAGE_GUIDES[sid]) : '(no SOP available for this stage)'}
-
+${variantBlock}
 ---
 
 ## Active learnings · Stage ${sid}
@@ -3508,11 +3877,11 @@ The \`stage\` and \`day\` fields must match exactly — the Cockpit rejects mism
 `;
 }
 
-async function copyPayload(sid){
+async function copyPayload(sid, variant){
   let text;
   try {
     toast(`⏳ Building Stage ${sid} payload — reading inputs...`);
-    text = await buildPayload(sid);
+    text = await buildPayload(sid, variant);
   } catch(e){
     toast(`✗ Payload build failed: ${e.message}`,'err');
     console.error(e);
@@ -3528,7 +3897,8 @@ async function copyPayload(sid){
     const sizeWarn = text.length > 60000
       ? ` ⚠ large paste, past chat clients have truncated payloads this size mid-paste — consider ⬇ Download payload instead`
       : '';
-    toast(`✓ Stage ${sid} payload copied · ${(text.length/1024).toFixed(1)} KB · ~${Math.round(text.length/4).toLocaleString()} tokens${rulesPart}${sizeWarn}`);
+    const vLabel = (variant && typeof THUMB_VARIANTS !== 'undefined' && THUMB_VARIANTS[variant]) ? ' · ' + THUMB_VARIANTS[variant].label : '';
+    toast(`✓ Stage ${sid}${vLabel} payload copied · ${(text.length/1024).toFixed(1)} KB · ~${Math.round(text.length/4).toLocaleString()} tokens${rulesPart}${sizeWarn}`);
   } catch(e){
     // fallback
     const ta = document.createElement('textarea');
@@ -3537,7 +3907,7 @@ async function copyPayload(sid){
     toast(`✓ Stage ${sid} payload copied (fallback) · ${(text.length/1024).toFixed(1)} KB`);
   }
 }
-async function downloadPayload(sid){
+async function downloadPayload(sid, variant){
   // A paste has no hard size limit but chat clients truncate long pastes in
   // practice — that's what dropped Stages 3.2 and 3.5 out of the first real
   // Stage 3.6 D002 run. Attaching a file has no such ceiling, so this is the
@@ -3545,14 +3915,15 @@ async function downloadPayload(sid){
   let text, ep;
   try {
     toast(`⏳ Building Stage ${sid} payload — reading inputs...`);
-    text = await buildPayload(sid);
+    text = await buildPayload(sid, variant);
     ep = activeEpisode();
   } catch(e){
     toast(`✗ Payload build failed: ${e.message}`,'err');
     console.error(e);
     return;
   }
-  const fname = `${artifactBase(sid, ep)}_Payload.md`;
+  const vSuffix = variant ? '_' + variant : '';
+  const fname = `${artifactBase(sid, ep)}_Payload${vSuffix}.md`;
   const blob = new Blob([text], {type:'text/markdown'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -3560,16 +3931,16 @@ async function downloadPayload(sid){
   URL.revokeObjectURL(url);
   toast(`✓ ${fname} downloaded · ${(text.length/1024).toFixed(1)} KB · attach this file in the fresh chat instead of pasting`);
 }
-async function previewPayload(sid){
+async function previewPayload(sid, variant){
   let text;
   try {
-    text = await buildPayload(sid);
+    text = await buildPayload(sid, variant);
   } catch(e){
     toast(`✗ Preview failed: ${e.message}`,'err');
     return;
   }
   const w = window.open('', '_blank');
-  w.document.write(`<title>Payload preview · ${sid}</title><pre style="white-space:pre-wrap;font:13px ui-monospace,monospace;padding:24px;max-width:900px;margin:0 auto">${text.replace(/</g,'&lt;')}</pre>`);
+  w.document.write(`<title>Payload preview · ${sid}${variant ? ' · '+variant : ''}</title><pre style="white-space:pre-wrap;font:13px ui-monospace,monospace;padding:24px;max-width:900px;margin:0 auto">${text.replace(/</g,'&lt;')}</pre>`);
 }
 
 // ════════════════════════════════════════════════════════════════════
