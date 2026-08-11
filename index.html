@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MPD Studio · v3.10.0</title>
+<title>MPD Studio · v3.10.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&family=Barlow:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -339,7 +339,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 <aside class="side">
   <div class="brand">
     MPD<br>Studio
-    <small id="app-ver">v3.10.0 · single-file · cloud-synced</small>
+    <small id="app-ver">v3.10.1 · single-file · cloud-synced</small>
   </div>
 
   <nav class="navlist" id="nav">
@@ -889,7 +889,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 // ════════════════════════════════════════════════════════════════════
 //  STATE SCHEMA + SEED
 // ════════════════════════════════════════════════════════════════════
-const APP_VERSION = '3.10.0';
+const APP_VERSION = '3.10.1';
 // Infrastructure contract versions Stage 3.6 depends on. Bump alongside any
 // change to the episode.json shape or the shell validator, and the payload's
 // preflight expectation moves with it automatically.
@@ -2718,7 +2718,7 @@ function renderEpisode(){
   const _b35 = list.querySelector('[data-stage="3.5"] .stage-body'); if (_b35) _b35.innerHTML = srtBody3_5(ep);
   const _b37 = list.querySelector('[data-stage="3.7"] .stage-body'); if (_b37) _b37.innerHTML = renderBody3_7(ep);
   const _b38 = list.querySelector('[data-stage="3.8"] .stage-body');
-  if (_b38){ _b38.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); thumbRecalc(); }
+  if (_b38){ _b38.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); }
 }
 
 function toggleStage(sid){
@@ -2905,12 +2905,12 @@ function srtBody3_5(ep){
 function srtCopyName(){ const ep=activeEpisode(); if(!ep) return; const fn=_epToken(ep.day)+'.5_Captions_v1'; navigator.clipboard.writeText(fn).then(()=>toast('Filename copied · '+fn)); }
 function srtMarkComplete(){ const ep=activeEpisode(); if(!ep) return; markStagePassed('3.5'); }
 
-// ── Stage 3.8 · thumbnail A/B UI (v3.10.0) ──────────────────────────
-// Five steps, per Ali's structure: inputs · five tool payloads · score the
-// 15 samples · name the three winners · complete. The scorecard exists
-// because "compare the outputs" without a rubric is vibes, and because the
-// per-tool totals accumulate in the gist — after ten episodes they say which
-// tool is actually earning its subscription.
+// ── Stage 3.8 · thumbnail A/B UI (v3.10.1) ──────────────────────────
+// Five steps. Step 3 is judged by Claude, not by hand: the fifteen candidate
+// PNGs from step 2 are the input, Studio supplies the rubric payload, and the
+// returned JSON tail fills picks + scores. Hand-scoring 75 cells was the wrong
+// job for a human — comparing fifteen images against a fixed rubric is exactly
+// what the model is for, and the scores land in the gist either way.
 function thumbState(ep){
   const st = ep.stages['3.8'];
   if (!st.thumb) st.thumb = { scores:{}, picks:[] };
@@ -2920,76 +2920,218 @@ function thumbState(ep){
 }
 function thumbKey(tool, i){ return tool + '-' + i; }
 function thumbLabelFor(tool){ return (THUMB_VARIANTS[tool] ? THUMB_VARIANTS[tool].label : tool); }
+function thumbKeyLabel(key){
+  const [tool, i] = String(key||'').split('-');
+  return thumbLabelFor(tool) + ' #' + (i||'?');
+}
+function thumbAllKeys(){
+  const out = [];
+  THUMB_TOOLS.forEach(tool => { for (let i=1;i<=3;i++) out.push(thumbKey(tool,i)); });
+  return out;
+}
 function thumbRowTotal(t, key){ return (t.scores[key] || []).reduce((x,y)=> x + (parseInt(y)||0), 0); }
-function thumbRanked(t){
-  const rows = [];
-  THUMB_TOOLS.forEach(tool => { for (let i=1;i<=3;i++){ const k = thumbKey(tool,i); rows.push({key:k, tool, i, total:thumbRowTotal(t,k)}); } });
-  return rows.filter(r => r.total > 0).sort((a,b) => b.total - a.total);
-}
-function thumbSetScore(tool, i, ci, val){
-  const ep = activeEpisode(); if (!ep) return;
-  const t = thumbState(ep); const k = thumbKey(tool,i);
-  if (!t.scores[k]) t.scores[k] = [0,0,0,0,0];
-  let v = parseInt(val); if (isNaN(v)) v = 0;
-  t.scores[k][ci] = Math.max(0, Math.min(5, v));
-  markDirty(); thumbRecalc();
-}
-function thumbRecalc(){
-  const ep = activeEpisode(); if (!ep) return;
-  const t = thumbState(ep);
-  const ranked = thumbRanked(t);
-  const topKeys = new Set(ranked.slice(0,3).map(r => r.key));
-  THUMB_TOOLS.forEach(tool => { for (let i=1;i<=3;i++){
-    const k = thumbKey(tool,i);
-    const tot = document.getElementById('sct-'+k); if (tot) tot.textContent = thumbRowTotal(t,k);
-    const row = document.getElementById('scr-'+k); if (row) row.classList.toggle('top', topKeys.has(k));
-  }});
-  const hint = document.getElementById('sc-hint');
-  if (hint) hint.textContent = ranked.length
-    ? 'Leading · ' + ranked.slice(0,3).map(r => thumbLabelFor(r.tool)+' #'+r.i+' ('+r.total+')').join('  ·  ')
-    : 'score at least three candidates to promote';
-}
-function thumbPromoteTop3(){
-  const ep = activeEpisode(); if (!ep) return;
-  const t = thumbState(ep);
-  const ranked = thumbRanked(t);
-  if (ranked.length < 3){ toast('Score at least three candidates first.','warn'); return; }
-  t.picks = ranked.slice(0,3).map(r => ({key:r.key, tool:r.tool, i:r.i, total:r.total}));
-  markDirty(); thumbRerender();
-  toast('Top three promoted → v1 · v2 · v3');
-}
-function thumbClearPicks(){
-  const ep = activeEpisode(); if (!ep) return;
-  thumbState(ep).picks = []; markDirty(); thumbRerender();
-}
 function thumbFilename(ep, n){ return _epToken(ep.day) + '.8_Thumbnail_v' + n + '.png'; }
 function thumbCopyName(n){
   const ep = activeEpisode(); if (!ep) return;
   const fn = thumbFilename(ep, n);
   navigator.clipboard.writeText(fn).then(()=> toast('Filename copied · ' + fn));
 }
+function thumbCopySampleNames(){
+  const names = thumbAllKeys().map(k => k + '.png').join('\n');
+  navigator.clipboard.writeText(names).then(()=> toast('15 sample filenames copied — rename the candidates to these before attaching'));
+}
+function thumbSetPick(slot, key){
+  const ep = activeEpisode(); if (!ep) return;
+  const t = thumbState(ep);
+  while (t.picks.length < 3) t.picks.push(null);
+  t.picks[slot] = key ? { key, tool:String(key).split('-')[0], i:parseInt(String(key).split('-')[1])||0, total:thumbRowTotal(t,key) } : null;
+  markDirty(); thumbRerender();
+}
+function thumbClearPicks(){
+  const ep = activeEpisode(); if (!ep) return;
+  const t = thumbState(ep); t.picks = []; t.scores = {};
+  markDirty(); thumbRerender();
+}
 function thumbRerender(){
   const ep = activeEpisode(); if (!ep) return;
   const el = document.querySelector('[data-stage="3.8"] .stage-body');
-  if (el){ el.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); thumbRecalc(); }
+  if (el){ el.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); }
+}
+
+// ── Step 3 · judging payload ────────────────────────────────────────
+function buildThumbJudgePayload(){
+  const ep = activeEpisode();
+  const t = thumbState(ep);
+  const rubric = THUMB_CRIT.map(c => `- **${c[0]}** (0-5) · ${c[1]}`).join('\n');
+  const roster = thumbAllKeys().map(k => `- \`${k}.png\` · ${thumbKeyLabel(k)}`).join('\n');
+  return `# MPD · Stage 3.8 · Thumbnail judging · ${ep.day}
+
+You are judging fifteen candidate thumbnails for one **MoneyPatternsDecoded** episode and picking the three that go into a YouTube Test and Compare A/B test. You are not producing new designs. You are not fixing these ones. You rank, you pick three, you say why.
+
+---
+
+## Episode
+
+- **Day** · ${ep.day}
+- **Topic** · ${ep.topic}
+- **Pillar** · ${ep.pillar}
+- **Keyword** · \`${ep.keyword}\`
+
+---
+
+## Inputs
+
+Fifteen PNG files are attached to this chat, three from each of five tools:
+
+${roster}
+
+If fewer than fifteen are attached, say which are missing and judge what is there. Do not invent scores for a file you cannot see.
+
+---
+
+## How to look at them
+
+Judge every candidate three times before scoring it.
+
+1. **At 168 pixels wide.** That is the suggested-sidebar size and the size at which most impressions happen. If the number is not the first thing you read, the candidate is already failing.
+2. **In grayscale.** Desaturate mentally and check the subject still separates from the ground. Colour is never allowed to be the only carrier of structure.
+3. **In a row.** Imagine it beside four competent competitor thumbnails for \`${ep.keyword}\`. Does it hold, or does it dissolve into the row?
+
+---
+
+## Rubric — score every candidate on all five, 0-5 each, 25 maximum
+
+${rubric}
+
+Score honestly and use the full range. If eleven candidates score 20 or above, the scoring is useless and the A/B test learns nothing. Most competent-but-unremarkable work sits at 12-16.
+
+---
+
+## Hard checks — a failure here caps the candidate at 12 regardless of how good it looks
+
+- **Ground** is Ink \`#2A2520\`. Figures are Canvas \`#E4DDD0\` and Amber \`#F5C518\`, Red \`#E63946\` only for a loss. Any colour outside the six brand tokens is a fail.
+- **Three elements only** — one object or silhouette at 25 percent of frame or more, one number, one to three words. Plus the small MPD mark, which does not count. A fourth element is a fail.
+- **Text budget** — four words maximum including the number's unit, fourteen characters maximum of word-text, six glyphs maximum in the number.
+- **Exactly one open-loop device** — redaction bar, contradiction pair, interrupted object, or an arrow leaving the frame. Zero reads as a chart. Two reads as noise.
+- **Type** — Barlow Condensed for the number, Barlow Condensed or DM Mono for the words. A substituted typeface is a fail, and image-generated candidates fail this more often than they appear to.
+- **Text fidelity** — if a generated candidate has misspelled, mangled or hallucinated any character of the number or the words, it fails outright. Read the glyphs, do not assume them.
+
+---
+
+## Choosing the three
+
+The top three by score are the starting point, not the answer. Then apply:
+
+- **Archetype diversity is mandatory.** The three picks must use three different archetypes from: Number Slam, Two-State Split, Object plus Redaction, Broken Line, Question Card. Three variations of one idea is a wasted test. If the top three share an archetype, drop the lower-scoring duplicate and promote the next candidate that differs, and say that you did.
+- **Prefer an editable winner in v1.** Where two candidates are within two points, favour the one from a vector or code tool (Claude Design, Claude chat, Recraft) over a raster generation, because v1 is the slot most likely to need a small correction later.
+- Note which tool produced each pick. Across episodes this is the signal for which tools are worth keeping.
+
+---
+
+## Output
+
+1. A ranked table of all fifteen: sample, tool, archetype, the five criterion scores, total, and one short line of why. Ranked best to worst.
+2. The three picks in slot order v1, v2, v3, each with two or three sentences on what it is testing and what a win by that candidate would tell us.
+3. Any hard-check failures, named by sample.
+4. Then the JSON tail below, in its own fenced block. Studio's step 3 parses it directly.
+
+\`\`\`json
+{
+  "stage": "3.8",
+  "day": "${ep.day}",
+  "scores": {
+    "design-1": [0,0,0,0,0]
+  },
+  "picks": [
+    {"key": "design-1", "archetype": "Number Slam", "why": "one line"},
+    {"key": "gemini-2", "archetype": "Broken Line", "why": "one line"},
+    {"key": "gpt-3", "archetype": "Question Card", "why": "one line"}
+  ],
+  "rating": 9
+}
+\`\`\`
+
+\`scores\` carries all fifteen keys in the order \`${THUMB_CRIT.map(c=>c[0]).join(', ')}\`. \`picks\` is exactly three, in v1/v2/v3 order. \`rating\` is your 1-10 confidence that this set is a worthwhile A/B test, not the score of the winner.
+
+---
+
+*Payload generated by MPD Studio v${APP_VERSION} · ${new Date().toISOString().slice(0,16)} · attach the fifteen PNGs and paste this as the first message. Use a vision-capable model — Opus.*
+`;
+}
+function copyThumbJudge(){
+  const text = buildThumbJudgePayload();
+  navigator.clipboard.writeText(text).then(
+    ()=> toast(`✓ Judging payload copied · ${(text.length/1024).toFixed(1)} KB · attach the 15 PNGs alongside it`),
+    ()=> { const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('✓ Judging payload copied (fallback)'); }
+  );
+}
+function downloadThumbJudge(){
+  const ep = activeEpisode(); if (!ep) return;
+  const text = buildThumbJudgePayload();
+  const fname = `${artifactBase('3.8', ep)}_JudgePayload.md`;
+  const blob = new Blob([text], {type:'text/markdown'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast(`✓ ${fname} downloaded · attach it with the 15 PNGs`);
+}
+function previewThumbJudge(){
+  const text = buildThumbJudgePayload();
+  const w = window.open('', '_blank');
+  w.document.write(`<title>Judging payload · 3.8</title><pre style="white-space:pre-wrap;font:13px ui-monospace,monospace;padding:24px;max-width:900px;margin:0 auto">${text.replace(/</g,'&lt;')}</pre>`);
+}
+function parseThumbJudgeJSON(){
+  const ep = activeEpisode(); if (!ep) return;
+  const el = document.getElementById('thumb-judge-json');
+  let raw = (el && el.value || '').trim();
+  if (!raw){ toast('Nothing to parse — paste the JSON tail first.','warn'); return; }
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) raw = fence[1].trim();
+  let obj;
+  try { obj = JSON.parse(raw); }
+  catch(e){ toast('✗ Not valid JSON — paste the tail block only.','err'); return; }
+  if (obj.day && obj.day !== ep.day && !confirm(`JSON says day ${obj.day}, active episode is ${ep.day}. Apply anyway?`)) return;
+  if (!Array.isArray(obj.picks) || !obj.picks.length){ toast('✗ No picks array in that JSON.','err'); return; }
+  const t = thumbState(ep);
+  const valid = new Set(thumbAllKeys());
+  if (obj.scores && typeof obj.scores === 'object'){
+    Object.entries(obj.scores).forEach(([k,v]) => {
+      if (valid.has(k) && Array.isArray(v)) t.scores[k] = v.slice(0,5).map(n => Math.max(0, Math.min(5, parseInt(n)||0)));
+    });
+  }
+  const unknown = [];
+  t.picks = obj.picks.slice(0,3).map(pk => {
+    const key = typeof pk === 'string' ? pk : pk.key;
+    if (!valid.has(key)) unknown.push(key);
+    return { key, tool:String(key||'').split('-')[0], i:parseInt(String(key||'').split('-')[1])||0,
+             total:thumbRowTotal(t,key), archetype:(pk && pk.archetype)||'', why:(pk && pk.why)||'' };
+  });
+  const arch = t.picks.map(p=>p.archetype).filter(Boolean);
+  const dupArch = arch.length === 3 && new Set(arch).size < 3;
+  if (obj.rating) ep.stages['3.8'].rating = Math.max(1, Math.min(10, parseInt(obj.rating)||0));
+  markDirty(); thumbRerender();
+  toast(`✓ ${t.picks.length} picks · ${Object.keys(t.scores).length}/15 scored${dupArch ? ' · ⚠ picks share an archetype' : ''}`,
+        dupArch ? 'warn' : undefined);
 }
 function thumbMarkComplete(){
   const ep = activeEpisode(); if (!ep) return;
   const st = ep.stages['3.8']; const t = thumbState(ep);
-  if (t.picks.length < 3 && !confirm('Fewer than three candidates picked. YouTube Test and Compare wants three. Mark complete anyway?')) return;
-  if (t.picks.length){
-    // Rating comes from the scorecard, not a self-rating JSON — this stage is
-    // judged by comparison, not by the model that produced it.
-    st.rating = Math.max(1, Math.min(10, Math.round(t.picks[0].total / 25 * 10)));
+  const picked = t.picks.filter(Boolean);
+  if (picked.length < 3 && !confirm('Fewer than three candidates picked. YouTube Test and Compare wants three. Mark complete anyway?')) return;
+  if (picked.length){
     st.artifact = thumbFilename(ep, 1);
-    st.output = 'A/B set · ' + t.picks.map((pk,ix) => 'v'+(ix+1)+' '+thumbLabelFor(pk.tool)+' #'+pk.i+' ('+pk.total+'/25)').join(' · ')
-              + ' · scored across ' + thumbRanked(t).length + ' of 15 samples';
+    st.output = 'A/B set · ' + picked.map((pk,ix) => 'v'+(ix+1)+' '+thumbKeyLabel(pk.key)+(pk.archetype?' ('+pk.archetype+')':'')+(pk.total?' '+pk.total+'/25':'')).join(' · ')
+              + ' · judged ' + Object.keys(t.scores).length + '/15 samples';
   }
   markStagePassed('3.8');
 }
+
 function thumbBody3_8(ep){
   const st = ep.stages['3.8']; const t = thumbState(ep);
   const assetCount = (state.assets || []).length;
+  const scored = Object.keys(t.scores).length;
+  const picked = t.picks.filter(Boolean);
 
   const cards = THUMB_TOOLS.map(tool => {
     const v = THUMB_VARIANTS[tool];
@@ -3001,36 +3143,29 @@ function thumbBody3_8(ep){
       <div class="tv-note">${v.note}</div>
       <div class="tv-btns">
         <button class="btn primary tiny" onclick="copyPayload('3.8','${tool}')">📋 Copy</button>
-        <button class="btn ghost tiny" onclick="downloadPayload('3.8','${tool}')" title="Saves as .md — attach in a fresh chat. Immune to paste truncation.">⬇ .md</button>
+        <button class="btn ghost tiny" onclick="downloadPayload('3.8','${tool}')" title="Saves as .md — attach in the fresh chat. Immune to paste truncation.">⬇ .md</button>
         <button class="btn ghost tiny" onclick="previewPayload('3.8','${tool}')">Preview</button>
       </div>
     </div>`;
   }).join('');
 
-  const heads = THUMB_CRIT.map(c => `<th title="${c[1]}">${c[0]}</th>`).join('');
-  const rows = THUMB_TOOLS.map(tool => {
-    return [1,2,3].map(i => {
-      const k = thumbKey(tool,i);
-      const sc = t.scores[k] || [0,0,0,0,0];
-      const cells = THUMB_CRIT.map((c,ci) =>
-        `<td><input type="number" min="0" max="5" value="${sc[ci]||0}" onchange="thumbSetScore('${tool}',${i},${ci},this.value)"></td>`).join('');
-      return `<tr class="sc-row" id="scr-${k}">
-        <td class="l sc-tool">${i === 1 ? thumbLabelFor(tool) : ''} <span style="color:var(--ink-soft)">#${i}</span></td>
-        ${cells}
-        <td class="sc-tot" id="sct-${k}">${thumbRowTotal(t,k)}</td>
-      </tr>`;
-    }).join('');
-  }).join('');
-
-  const picksHtml = t.picks.length
-    ? t.picks.map((pk,ix) => `<div class="pick-row">
-        <div class="pick-slot">v${ix+1}</div>
-        <div style="flex:1;min-width:0">
-          <button class="btn ghost tiny tts-copybtn" onclick="thumbCopyName(${ix+1})" title="copy full filename">⧉ ${thumbFilename(ep, ix+1)}</button>
-          <div class="pick-meta">${thumbLabelFor(pk.tool)} · sample #${pk.i} · scored ${pk.total}/25</div>
+  const opts = key => thumbAllKeys().map(k =>
+    `<option value="${k}"${k===key?' selected':''}>${thumbKeyLabel(k)}${t.scores[k]?' · '+thumbRowTotal(t,k)+'/25':''}</option>`).join('');
+  const pickRows = [0,1,2].map(ix => {
+    const pk = t.picks[ix] || null;
+    return `<div class="pick-row">
+      <div class="pick-slot">v${ix+1}</div>
+      <div style="flex:1;min-width:0">
+        <button class="btn ghost tiny tts-copybtn" onclick="thumbCopyName(${ix+1})" title="copy full filename">⧉ ${thumbFilename(ep, ix+1)}</button>
+        <div class="pick-meta">
+          <select style="max-width:230px;font-size:11px;padding:3px" onchange="thumbSetPick(${ix}, this.value)">
+            <option value="">— not picked —</option>${opts(pk && pk.key)}
+          </select>
+          ${pk && pk.archetype ? ' · ' + escapeHtml(pk.archetype) : ''}
         </div>
-      </div>`).join('')
-    : `<div style="font-size:12.5px;color:var(--ink-soft);font-style:italic;padding:8px 0">No candidates promoted yet. Score the samples in step 3, then hit <b>Promote top three</b>.</div>`;
+      </div>
+    </div>`;
+  }).join('');
 
   return `
     <div class="flow-step-h" style="border-top:0;padding-top:2px"><span class="fn">1</span><span class="ft">Inputs</span><span class="fs">brief required · figures are canonical</span></div>
@@ -3045,33 +3180,36 @@ function thumbBody3_8(ep){
     <div class="payload-actions"><button class="btn ghost tiny" onclick="refreshInputStatus('3.8')" title="Re-scan workspace">↻ Refresh inputs</button></div>
 
     <div class="flow-step-h"><span class="fn">2</span><span class="ft">Five payloads, five tools</span><span class="fs">3 candidates each · 15 samples total</span></div>
-    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px">Each payload is written for how that tool actually takes direction — code-exact hex for the two that write code, plain-language art direction and literal quoted text for the two that generate images. Run all five, ask each for three archetypes.</p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px">Each payload is written for how that tool actually takes direction — code-exact hex for the two that write code, plain-language art direction with the text quoted literally for the two that generate images. Run all five, ask each for three archetypes.</p>
     <div class="tv-grid">${cards}</div>
+    <div class="payload-actions"><button class="btn ghost tiny" onclick="thumbCopySampleNames()" title="design-1.png … recraft-3.png">⧉ Copy the 15 sample filenames</button></div>
 
-    <div class="flow-step-h"><span class="fn">3</span><span class="ft">Score the 15, take the top three</span><span class="fs">0–5 per criterion · 25 max</span></div>
-    <div class="sc-wrap">
-      <table class="sc-table">
-        <thead><tr><th class="l">Sample</th>${heads}<th>Σ</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
+    <div class="flow-step-h"><span class="fn">3</span><span class="ft">Claude judges the 15</span><span class="fs">attach the PNGs · paste the JSON tail back</span></div>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px">Rename the fifteen candidates to the sample filenames above, attach them to a fresh <b>Opus</b> chat with this payload, and paste the returned JSON tail below. It scores all fifteen against the rubric, enforces archetype diversity across the picks, and fills v1/v2/v3.</p>
+    <div class="payload-actions">
+      <button class="btn primary" onclick="copyThumbJudge()">📋 Copy judging payload</button>
+      <button class="btn ghost tiny" onclick="downloadThumbJudge()" title="Saves as .md — attach it with the PNGs.">⬇ .md</button>
+      <button class="btn ghost tiny" onclick="previewThumbJudge()">Preview</button>
     </div>
-    <div class="sc-legend">
-      ${THUMB_CRIT.map(c => `<b>${c[0]}</b> ${c[1]}`).join('<br>')}
-    </div>
-    <div class="row" style="margin-top:10px;gap:8px;align-items:center">
-      <button class="btn primary tiny" onclick="thumbPromoteTop3()">⬆ Promote top three</button>
-      ${t.picks.length ? `<button class="btn ghost tiny" onclick="thumbClearPicks()">Clear picks</button>` : ''}
-      <span id="sc-hint" style="font-family:var(--font-mono);font-size:10px;color:var(--ink-soft)"></span>
+    <div class="json-paste-bar" style="margin-top:12px">
+      <h3><span>Paste judge JSON</span><span class="hint">fills picks · scores · rating${scored ? ' · '+scored+'/15 scored' : ''}</span></h3>
+      <textarea id="thumb-judge-json" rows="4" placeholder="Paste the JSON tail from the judging chat (with or without &#96;&#96;&#96;json fences)."></textarea>
+      <div class="row" style="margin-top:8px;gap:6px">
+        <button class="btn primary tiny" onclick="parseThumbJudgeJSON()">⚙ Parse JSON</button>
+        ${picked.length ? `<button class="btn ghost tiny" onclick="thumbClearPicks()">Clear picks + scores</button>` : ''}
+        <span class="spacer"></span>
+        ${picked.length ? `<span class="mono" style="font-size:10px;color:var(--ink-soft)">picked: ${picked.map(pk=>thumbKeyLabel(pk.key)).join(' · ')}</span>` : ''}
+      </div>
     </div>
 
     <div class="flow-step-h"><span class="fn">4</span><span class="ft">Save the three</span><span class="fs">1280×720 PNG + editable source, same stem</span></div>
-    <div class="thumb-picks">${picksHtml}</div>
+    <div class="thumb-picks">${pickRows}</div>
     <div style="font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.55">
-      Save each PNG and its source (.svg, .canvas or .recraft) under the same stem into
-      <code>${episodeFolder(ep.day, ep.topic_short)}/</code>. Upload all three to YouTube Test &amp; Compare — v1 is the default the test runs against.
+      Save each PNG and its source under the same stem into <code>${episodeFolder(ep.day, ep.topic_short)}/</code>.
+      Upload all three to YouTube Test &amp; Compare — v1 is the default the test runs against.
     </div>
 
-    <div class="flow-step-h"><span class="fn">5</span><span class="ft">Mark complete</span><span class="fs">rating is taken from the winning score</span></div>
+    <div class="flow-step-h"><span class="fn">5</span><span class="ft">Mark complete</span><span class="fs">three saved and uploaded to Test &amp; Compare</span></div>
     <div class="row"><button class="btn primary" onclick="thumbMarkComplete()">${st.status === 'passed' ? '✓ Completed' : 'Mark complete'}</button></div>
     <div class="learnings-bar" style="margin-top:22px">
       <h3><span>Learnings · 3.8 <span class="hint">included in every future 3.8 payload · use <code>Active Rule AR-###:</code> to promote a line to a hard constraint</span></span></h3>
