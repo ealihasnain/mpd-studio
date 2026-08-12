@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MPD Studio · v3.10.3</title>
+<title>MPD Studio · v3.10.4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&family=Barlow:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -349,6 +349,11 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 .tx-sub2{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-soft);margin-top:3px}
 .tx-sub2.err{color:var(--red)}
 .tx-item select{font-size:11px;padding:3px 4px;max-width:150px}
+.sn-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--hairline)}
+.sn-lead{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);margin-right:3px;display:flex;flex-direction:column;gap:2px}
+.sn-note{font-family:var(--font-mono);font-size:8.5px;letter-spacing:.03em;text-transform:none;opacity:.75}
+.sn-grp{display:flex;gap:2px;margin-right:7px}
+.sn-b{font-family:var(--font-mono);font-size:10px;letter-spacing:.02em;padding:4px 7px}
 </style>
 </head>
 <body>
@@ -358,7 +363,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 <aside class="side">
   <div class="brand">
     MPD<br>Studio
-    <small id="app-ver">v3.10.3 · single-file · cloud-synced</small>
+    <small id="app-ver">v3.10.4 · single-file · cloud-synced</small>
   </div>
 
   <nav class="navlist" id="nav">
@@ -908,7 +913,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 // ════════════════════════════════════════════════════════════════════
 //  STATE SCHEMA + SEED
 // ════════════════════════════════════════════════════════════════════
-const APP_VERSION = '3.10.3';
+const APP_VERSION = '3.10.4';
 // Infrastructure contract versions Stage 3.6 depends on. Bump alongside any
 // change to the episode.json shape or the shell validator, and the payload's
 // preflight expectation moves with it automatically.
@@ -2955,9 +2960,14 @@ function thumbCopyName(n){
   const fn = thumbFilename(ep, n);
   navigator.clipboard.writeText(fn).then(()=> toast('Filename copied · ' + fn));
 }
-function thumbCopySampleNames(){
-  const names = thumbAllKeys().map(k => k + '.png').join('\n');
-  navigator.clipboard.writeText(names).then(()=> toast('15 sample filenames copied — rename the candidates to these before attaching'));
+// Claude Design's three come out of the exporter already named, so only the
+// four hand-downloaded tools need a name to paste into a Save As dialog.
+function thumbCopySample(key){
+  navigator.clipboard.writeText(key + '.png').then(
+    ()=> toast('⧉ ' + key + '.png'),
+    ()=> { const ta=document.createElement('textarea'); ta.value=key+'.png';
+           document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+           toast('⧉ ' + key + '.png'); });
 }
 function thumbSetPick(slot, key){
   const ep = activeEpisode(); if (!ep) return;
@@ -3556,7 +3566,11 @@ function thumbBody3_8(ep){
       The small preview beside each row is the 168px squint check.
     </div>
     <div id="tx-panel"></div>
-    <div class="payload-actions"><button class="btn ghost tiny" onclick="thumbCopySampleNames()" title="design-1.png … recraft-3.png">⧉ Copy the 15 sample filenames</button></div>
+    <div class="sn-bar">
+      <span class="sn-lead">Save-as names<span class="sn-note">Claude Design's three are named by the exporter</span></span>
+      ${THUMB_TOOLS.filter(t => t !== 'design').map(t => `<span class="sn-grp">${[1,2,3].map(i =>
+        `<button class="btn ghost tiny sn-b" onclick="thumbCopySample('${t}-${i}')" title="copy ${t}-${i}.png">${t}-${i}</button>`).join('')}</span>`).join('')}
+    </div>
 
     <div class="flow-step-h"><span class="fn">3</span><span class="ft">Claude judges the 15</span><span class="fs">attach the PNGs · paste the JSON tail back</span></div>
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px">Rename the fifteen candidates to the sample filenames above, attach them to a fresh <b>Opus</b> chat with this payload, and paste the returned JSON tail below. It scores all fifteen against the rubric, enforces archetype diversity across the picks, and fills v1/v2/v3.</p>
