@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MPD Studio · v3.10.2</title>
+<title>MPD Studio · v3.10.3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&family=Barlow:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -358,7 +358,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 <aside class="side">
   <div class="brand">
     MPD<br>Studio
-    <small id="app-ver">v3.10.2 · single-file · cloud-synced</small>
+    <small id="app-ver">v3.10.3 · single-file · cloud-synced</small>
   </div>
 
   <nav class="navlist" id="nav">
@@ -908,7 +908,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 // ════════════════════════════════════════════════════════════════════
 //  STATE SCHEMA + SEED
 // ════════════════════════════════════════════════════════════════════
-const APP_VERSION = '3.10.2';
+const APP_VERSION = '3.10.3';
 // Infrastructure contract versions Stage 3.6 depends on. Bump alongside any
 // change to the episode.json shape or the shell validator, and the payload's
 // preflight expectation moves with it automatically.
@@ -2978,7 +2978,7 @@ function thumbRerender(){
 }
 
 
-// ── Stage 3.8 · exporter (v3.10.2) ──────────────────────────────────
+// ── Stage 3.8 · exporter (v3.10.3) ──────────────────────────────────
 // Claude Design has no PNG export, Recraft returns SVG, and the two image
 // models return whatever size they feel like. Rather than send Ali into
 // DevTools, Studio rasterises: SVG or HTML in, exact 1280x720 PNG out, named
@@ -3058,6 +3058,76 @@ function txExtractSVGs(html){
   let m; while ((m = re.exec(html)) !== null) out.push(m[0]);
   return out;
 }
+
+// A decorative background flourish is still an <svg>. Only 16:9 elements of
+// plausible size are frames — EP002's Design export carried a 1200x800
+// ornament that the first version of this happily exported as a thumbnail.
+function txIsFrameSVG(el){
+  const vb = (el.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+  let w, h;
+  if (vb.length === 4 && vb[2] > 0){ w = vb[2]; h = vb[3]; }
+  else { w = parseFloat(el.getAttribute('width')); h = parseFloat(el.getAttribute('height')); }
+  if (!w || !h) return false;
+  return Math.abs((w / h) - (TX_W / TX_H)) < 0.02 && w >= 640;
+}
+function txInlineSize(el){
+  const st = el.getAttribute('style') || '';
+  const w = /(?:^|[;\s])width:\s*(\d+(?:\.\d+)?)px/.exec(st);
+  const h = /(?:^|[;\s])height:\s*(\d+(?:\.\d+)?)px/.exec(st);
+  return { w: w ? parseFloat(w[1]) : 0, h: h ? parseFloat(h[1]) : 0 };
+}
+// Wrap a live DOM frame in foreignObject so canvas can rasterise it. Only
+// safe because Claude Design writes every rule as an inline style — a frame
+// that depends on a stylesheet or an external <img> will not survive this,
+// and is rejected at ingest rather than exported wrong.
+function txWrapDOM(node){
+  const clone = node.cloneNode(true);
+  clone.setAttribute('style', (clone.getAttribute('style') || '') + ';margin:0');
+  const xhtml = new XMLSerializer().serializeToString(clone);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${TX_W}" height="${TX_H}" viewBox="0 0 ${TX_W} ${TX_H}">`
+       + `<foreignObject x="0" y="0" width="${TX_W}" height="${TX_H}">`
+       + `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${TX_W}px;height:${TX_H}px;margin:0;padding:0;overflow:hidden">`
+       + xhtml + `</div></foreignObject></svg>`;
+}
+// Claude Design's standalone export is a self-unpacking gzip bundle, but the
+// frame markup sits in plaintext in its template block. Reading that means no
+// script execution, no hydration wait, no network.
+function txFramesFromHTML(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  let src = doc;
+  const tpl = doc.querySelector('script[type="__bundler/template"]');
+  if (tpl){
+    let inner = (tpl.textContent || '').trim();
+    try { inner = JSON.parse(inner); } catch(e){ /* already raw markup */ }
+    if (typeof inner === 'string' && /<[a-z]/i.test(inner)) src = new DOMParser().parseFromString(inner, 'text/html');
+  }
+  const out = [], seen = new Set();
+  const take = (node, label) => {
+    if (seen.has(node)) return;
+    if (node.querySelector('img')){ out.push({ err:'frame contains an <img> — canvas cannot export it', label }); seen.add(node); return; }
+    seen.add(node);
+    out.push({ markup: txWrapDOM(node), label });
+  };
+  // 1 · labelled frames at exact size — the Claude Design shape
+  src.querySelectorAll('[data-screen-label]').forEach(n => {
+    const d = txInlineSize(n);
+    if (d.w === TX_W && d.h === TX_H) take(n, n.getAttribute('data-screen-label') || '');
+  });
+  // 2 · any element sized exactly 1280x720 inline
+  if (!out.length){
+    src.querySelectorAll('[style*="1280"]').forEach(n => {
+      const d = txInlineSize(n);
+      if (d.w === TX_W && d.h === TX_H) take(n, '');
+    });
+  }
+  // 3 · genuine 16:9 SVG frames
+  if (!out.length){
+    src.querySelectorAll('svg').forEach(el => {
+      if (txIsFrameSVG(el)) out.push({ markup: new XMLSerializer().serializeToString(el), label:'' });
+    });
+  }
+  return out;
+}
 function txDrawToBlob(img, scale){
   const c = document.createElement('canvas');
   c.width = TX_W * scale; c.height = TX_H * scale;
@@ -3125,12 +3195,18 @@ async function txAddFiles(files){
         const txt = await f.text();
         TX_ITEMS.push({ name:f.name, kind:'svg', source:txt, slot:txFreeSlot(txGuessSlot(f.name)) });
       } else if (ext === 'html' || ext === 'htm'){
-        const svgs = txExtractSVGs(await f.text());
-        if (!svgs.length){ toast(`✗ ${f.name} contains no <svg> — re-export with the SVG frame requirement.`,'err'); continue; }
-        svgs.forEach((sv, ix) => TX_ITEMS.push({
-          name: f.name.replace(/\.html?$/i,'') + ' · frame ' + (ix+1),
-          kind:'svg', source:sv, slot:txFreeSlot(ix === 0 ? txGuessSlot(f.name) : '')
+        const frames = txFramesFromHTML(await f.text());
+        if (!frames.length){
+          toast(`✗ ${f.name} — no 1280×720 frames found. Each candidate needs exact inline width and height.`,'err');
+          continue;
+        }
+        const hint = txGuessSlot(f.name).split('-')[0] || '';
+        frames.forEach((fr, ix) => TX_ITEMS.push({
+          name: fr.label || (f.name.replace(/\.html?$/i,'') + ' · frame ' + (ix+1)),
+          kind:'svg', source:fr.markup || '', err:fr.err || null,
+          slot: txFreeSlot(hint ? hint + '-' + (ix+1) : '')
         }));
+        toast(`✓ ${frames.length} frame${frames.length===1?'':'s'} read from ${f.name}`);
       } else if (['png','jpg','jpeg','webp'].includes(ext)){
         TX_ITEMS.push({ name:f.name, kind:'raster', source:URL.createObjectURL(f), slot:txFreeSlot(txGuessSlot(f.name)) });
       } else {
@@ -3218,7 +3294,7 @@ function txPanelHTML(){
   return `
     <div class="tx-drop" id="tx-drop" onclick="document.getElementById('tx-file').click()">
       <div class="tx-drop-h">Drop candidates here</div>
-      <div class="tx-drop-s">.svg · .html (frames extracted) · .png / .jpg — or click to browse</div>
+      <div class="tx-drop-s">Claude Design .html · .svg · optional .png / .jpg — or click to browse</div>
       <input type="file" id="tx-file" multiple hidden accept=".svg,.html,.htm,.png,.jpg,.jpeg,.webp,.css" onchange="txAddFiles(this.files); this.value=''">
     </div>
     <div class="tx-fonts">${fontLine}</div>
@@ -3473,9 +3549,10 @@ function thumbBody3_8(ep){
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px">Each payload is written for how that tool actually takes direction — code-exact hex for the two that write code, plain-language art direction with the text quoted literally for the two that generate images. Run all five, ask each for three archetypes.</p>
     <div class="tv-grid">${cards}</div>
     <div style="font-size:12px;color:var(--ink-soft);margin:14px 0 4px;line-height:1.55">
-      <b>Export.</b> Claude Design has no PNG export and Recraft returns SVG, so drop whatever each tool gives you below —
-      vector, a standalone HTML export, or a raw generation — and Studio renders exact 1280×720 PNGs named for their slot.
-      Fonts are embedded into every frame before rasterising; without them an SVG silently renders as serif.
+      <b>Export.</b> Mainly for Claude Design, which has no PNG export — drop its standalone HTML here and Studio reads the
+      1280×720 frames straight out of it and writes one PNG each. Recraft's SVG works the same way.
+      Gemini and ChatGPT already give you images, so they only need this if you want them cropped to 16:9 and renamed to their slot.
+      Fonts are embedded before rasterising; without them a vector frame silently renders as serif.
       The small preview beside each row is the 168px squint check.
     </div>
     <div id="tx-panel"></div>
@@ -3923,8 +4000,9 @@ You are producing an editable design on a canvas, not a description of one. Buil
 - Type: Barlow Condensed 900 for the number, Barlow Condensed 700 or DM Mono 500 for the words, DM Mono 400 at 9px for the MPD mark.
 - Build every object from vector primitives. No raster imagery, no gradients, no drop shadows, no bevels, no glow. Flat fills and hard edges only.
 - Set the number's cap height between 45 and 62 percent of frame height depending on archetype.
-- **Build each frame as an inline SVG element with an exact viewBox of 0 0 1280 720.** Claude Design has no PNG export, so the deliverable is Export as standalone HTML, which Studio's exporter then rasterises. An SVG frame survives that round trip exactly; a div-and-CSS frame does not.
-- Do not apply CSS scaling or transforms to the SVG's own container. Scale inside the viewBox.
+- **Each candidate is one element sized exactly 1280px by 720px inline**, carrying a data-screen-label attribute naming its archetype, for example data-screen-label="A · Redaction". Claude Design has no PNG export; Studio reads those frames out of the standalone HTML and rasterises them, and it matches on the exact pixel dimensions.
+- **Inline styles only, and no images.** Every rule lives in a style attribute on the element that needs it. No stylesheet rules, no class selectors, no img elements, no CSS background-image, no external URLs. Anything that depends on a stylesheet or a remote file will not survive the export.
+- Do not wrap a candidate in a scaled or transformed container. Contact-sheet previews elsewhere on the canvas may be scaled; the three full-size frames may not.
 - Deliver via Export in the upper right, Export as standalone HTML, then drop that .html into Studio's exporter under step 2. Keep the Design project itself as the editable source.
 - Add a fourth frame showing all three candidates at 168x94 side by side. That frame is the squint test — do not skip it.`
   },
