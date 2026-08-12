@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MPD Studio · v3.10.1</title>
+<title>MPD Studio · v3.10.2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&family=Barlow:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -330,6 +330,25 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 .pick-row{display:flex;align-items:center;gap:11px;padding:9px 11px;background:var(--canvas-deep);max-width:560px;border-left:3px solid var(--amber)}
 .pick-slot{font-family:var(--font-display);font-weight:900;font-size:20px;width:34px;flex:0 0 34px;line-height:1}
 .pick-meta{font-family:var(--font-mono);font-size:10px;color:var(--ink-soft);margin-top:3px}
+
+/* Stage 3.8 · exporter (v3.10.2) */
+.tx-drop{border:2px dashed var(--hairline);background:var(--canvas-deep);padding:18px 14px;text-align:center;cursor:pointer;transition:border-color .12s,background .12s}
+.tx-drop:hover,.tx-drop.over{border-color:var(--teal);background:#2DB89D14}
+.tx-drop-h{font-family:var(--font-display);font-weight:900;font-size:15px;text-transform:uppercase;line-height:1.1}
+.tx-drop-s{font-family:var(--font-mono);font-size:10px;color:var(--ink-soft);letter-spacing:.05em;margin-top:5px}
+.tx-fonts{font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tx-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 7px}
+.tx-dot.ok{background:var(--teal)} .tx-dot.bad{background:var(--red)} .tx-dot.wait{background:var(--amber)}
+.tx-list{display:flex;flex-direction:column;gap:7px;margin-top:11px}
+.tx-item{display:flex;gap:11px;align-items:center;background:var(--canvas-deep);padding:8px 10px;border-left:3px solid var(--slate)}
+.tx-item.ok{border-left-color:var(--teal)} .tx-item.err{border-left-color:var(--red)}
+.tx-thumb{width:112px;height:63px;flex:0 0 112px;background:var(--ink);object-fit:contain;image-rendering:auto}
+.tx-mini{width:56px;height:31px;flex:0 0 56px;background:var(--ink);object-fit:contain;border:1px solid var(--hairline)}
+.tx-meta{flex:1;min-width:0}
+.tx-name{font-family:var(--font-mono);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx-sub2{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-soft);margin-top:3px}
+.tx-sub2.err{color:var(--red)}
+.tx-item select{font-size:11px;padding:3px 4px;max-width:150px}
 </style>
 </head>
 <body>
@@ -339,7 +358,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 <aside class="side">
   <div class="brand">
     MPD<br>Studio
-    <small id="app-ver">v3.10.1 · single-file · cloud-synced</small>
+    <small id="app-ver">v3.10.2 · single-file · cloud-synced</small>
   </div>
 
   <nav class="navlist" id="nav">
@@ -889,7 +908,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 // ════════════════════════════════════════════════════════════════════
 //  STATE SCHEMA + SEED
 // ════════════════════════════════════════════════════════════════════
-const APP_VERSION = '3.10.1';
+const APP_VERSION = '3.10.2';
 // Infrastructure contract versions Stage 3.6 depends on. Bump alongside any
 // change to the episode.json shape or the shell validator, and the payload's
 // preflight expectation moves with it automatically.
@@ -1070,7 +1089,7 @@ The asset registry is inlined in this payload. Reuse a registered silhouette or 
 
 ### Delivery
 
-Three PNGs at 1280x720 sRGB, under 2 MB each, plus the editable source for each saved under the same stem. Report per candidate: archetype, the number and where it sits in the brief, the words, the open-loop device, asset id or NEW, and all three test results.`,
+Three PNGs at 1280x720 sRGB, under 2 MB each, plus the editable source for each saved under the same stem. Vector tools deliver SVG or standalone HTML and Studio's step 2 exporter does the rasterising — do not screenshot, and do not hand back a frame whose size depends on a browser window. Report per candidate: archetype, the number and where it sits in the brief, the words, the open-loop device, asset id or NEW, and all three test results.`,
   '3.9': "### Output \u2014 YouTube upload metadata package\nSingle markdown file 09_UploadPack_v#.md containing everything needed to publish.\n\n### Title\n- **\u226460 characters** (hard limit \u2014 anything more truncates in feed)\n- **Keyword in first 20 characters**\n- **Curiosity gap** without clickbait \u2014 promise a reveal, not a guarantee\n- Pattern that works: \"Why [common belief] [unexpected outcome]\" or \"The Hidden [thing] Behind [familiar thing]\"\n- Examples:\n  - \u2713 \"Why 'Pay Yourself First' Doesn't Work for Most People\" (52 chars, keyword first)\n  - \u2717 \"I CANNOT BELIEVE What Financial Advisors Don't Tell You About Saving Money!!!\" (clickbait)\n\n### Description (first 2 lines = search snippet)\n- **First 2 lines** (\u2248160 chars) must function as a search-result snippet \u2014 keyword in line 1, hook in line 2\n- After 2 lines: 1-2 paragraph summary, then chapter timestamps\n- Chapter timestamps as `00:00 Hook`, `00:45 Chapter 1 \u2014 Title`, etc., matching Stage 3.1 chapter list\n- End with: data sources note (\"Sources cited: [list 3-5 primary sources]\"), end-screen plan teaser\n\n### Tags\n- **5-8 tags** total \u2014 fewer is better for relevance signal\n- Lead with primary keyword from Stage 3.1\n- Include 2-3 broader pillar tags (e.g. \"personal finance\", \"behavioral economics\")\n- Include 1-2 specific topic tags\n- Avoid generic spam tags (\"money\", \"finance\", \"investing\" alone are too broad)\n\n### End-screen plan\n- 20s end-screen\n- Position: 1 video card (most-related previous MPD video) + 1 subscribe button\n- Voiceover for end-screen: short, no \"smash that like button\" \u2014 instead \"If you found a pattern here, the description has sources. See you Saturday.\"\n\n### Pinned comment template\n1-2 sentences clarifying the strongest data point with source, OR a soft prompt asking which mechanism most surprised the viewer.\n\n### Output\n09_UploadPack_v1.md with sections: Title (with char count) \u00b7 Description \u00b7 Tags \u00b7 Chapter Timestamps \u00b7 End-Screen Plan \u00b7 Pinned Comment. Update Cockpit output: chosen title, primary keyword, tag count.",
   '3.10': "### Input \u2014 outputs from 3.1 through 3.9 of this episode\nThe full episode artifact set. This stage is the \"library propagation\" step.\n\n### Output \u2014 markdown delta listing what to add/update in the corpus\nSingle file 10_LibraryDelta_v1.md describing changes to be made to the standing knowledge base.\n\n### Sections to produce\n\n**1. New datapoints to add to corpus** \u2014 any DP from Stage 3.1 worth reusing in future videos (international comparisons, durable structural numbers, behavioral research stats). For each: `[DP-XYZ] Stat \u2014 Source, Year` + originating chapter/topic. Skip topic-specific ephemeral numbers.\n\n**2. New visual assets to register** \u2014 any NEW (not REUSE) asset from Stage 3.6's manifest. For each: asset ID \u00b7 type (portrait card / country panel / brand badge / stat-slam template / etc.) \u00b7 description \u00b7 file path or inline reference. These get added to the asset library so 3.6 in future episodes can mark them REUSE.\n\n**3. New opener variants used** \u2014 if Stage 3.2 introduced a fresh opener pattern beyond standard codes (N / AN / SV / IM / Q), document for the opener variety bank.\n\n**4. Voice canon variations** \u2014 any new phrasing that worked well and matches the canon (positive examples to amplify) or any phrasing to add to slop blocklist (G12) because it appeared in a draft and got flagged.\n\n**5. Reframe + mechanism inventory** \u2014 record this episode's reframe (where it sat, what it dismantled) and mechanism (the named principle: Thaler / Kahneman-Tversky / Laibson / Akerlof / etc.). Building this inventory across episodes prevents repetition.\n\n**6. Changelog entry** \u2014 one paragraph for the running changelog: date \u00b7 D### \u00b7 topic \u00b7 pillar \u00b7 final word count \u00b7 self-rating \u00b7 noteworthy production wins or failures.\n\n### Output\n10_LibraryDelta_v1.md \u00b7 structured for manual append to the standing corpus. After user reviews and accepts the deltas, the corpus reference gets updated and the episode is marked complete. The user then publishes to YouTube and triggers next-episode promotion.",
 };
@@ -2718,7 +2737,7 @@ function renderEpisode(){
   const _b35 = list.querySelector('[data-stage="3.5"] .stage-body'); if (_b35) _b35.innerHTML = srtBody3_5(ep);
   const _b37 = list.querySelector('[data-stage="3.7"] .stage-body'); if (_b37) _b37.innerHTML = renderBody3_7(ep);
   const _b38 = list.querySelector('[data-stage="3.8"] .stage-body');
-  if (_b38){ _b38.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); }
+  if (_b38){ _b38.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); txRenderPanel(); txLoadFonts(true); }
 }
 
 function toggleStage(sid){
@@ -2955,7 +2974,278 @@ function thumbClearPicks(){
 function thumbRerender(){
   const ep = activeEpisode(); if (!ep) return;
   const el = document.querySelector('[data-stage="3.8"] .stage-body');
-  if (el){ el.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); }
+  if (el){ el.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); txRenderPanel(); }
+}
+
+
+// ── Stage 3.8 · exporter (v3.10.2) ──────────────────────────────────
+// Claude Design has no PNG export, Recraft returns SVG, and the two image
+// models return whatever size they feel like. Rather than send Ali into
+// DevTools, Studio rasterises: SVG or HTML in, exact 1280x720 PNG out, named
+// for the slot step 3 expects. Fonts are base64-injected into every frame
+// before serialisation — an SVG rasterised without them silently falls back
+// to serif and the whole layout is wrong in a way that looks deliberate.
+const TX_W = 1280, TX_H = 720;
+let TX_ITEMS = [];
+let TX_FONTCSS = null;
+let TX_FONTSTATE = 'idle';   // idle · loading · ok · missing
+const TX_FAMILIES = ['Barlow Condensed', 'Barlow', 'DM Mono'];
+
+function txFontsFromCache(){
+  try { return localStorage.getItem('mpd_fonts_b64') || null; } catch(e){ return null; }
+}
+function txFontsValid(css){
+  if (!css || css.length < 20000) return false;
+  if (!/base64,/.test(css)) return false;
+  return TX_FAMILIES.every(f => css.includes('"' + f + '"') || css.includes("'" + f + "'"));
+}
+function txSetFonts(css, quiet){
+  if (!txFontsValid(css)){
+    TX_FONTSTATE = 'missing';
+    if (!quiet) toast('✗ That file is not the base64 font CSS — needs all three families with embedded data URIs.','err');
+    txRenderPanel(); return false;
+  }
+  TX_FONTCSS = css; TX_FONTSTATE = 'ok';
+  try { localStorage.setItem('mpd_fonts_b64', css); } catch(e){ /* over quota — held in memory for this session */ }
+  if (!quiet) toast('✓ Fonts cached · ' + (css.length/1024).toFixed(0) + ' KB · offline from here');
+  txRenderPanel(); return true;
+}
+async function txLoadFonts(quiet){
+  const cached = txFontsFromCache();
+  if (txFontsValid(cached)){ TX_FONTCSS = cached; TX_FONTSTATE = 'ok'; txRenderPanel(); return true; }
+  TX_FONTSTATE = 'loading'; txRenderPanel();
+  try {
+    const r = await fetch('fonts_b64.css', {cache:'force-cache'});
+    if (!r.ok) throw new Error('http ' + r.status);
+    return txSetFonts(await r.text(), true);
+  } catch(e){
+    TX_FONTSTATE = 'missing'; txRenderPanel();
+    if (!quiet) toast('✗ fonts_b64.css not found beside index.html — drop the file in instead.','err');
+    return false;
+  }
+}
+function txFontFile(f){
+  const rd = new FileReader();
+  rd.onload = () => txSetFonts(String(rd.result || ''));
+  rd.readAsText(f);
+}
+
+// Force exact output geometry and inject the faces. An SVG that arrives at
+// 800x450 with no viewBox rasterises at 800x450 and upscales soft, so the
+// viewBox is synthesised from whatever dimensions it does carry.
+function txNormaliseSVG(markup){
+  const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+  if (doc.querySelector('parsererror')) throw new Error('SVG will not parse');
+  const svg = doc.documentElement;
+  if (!svg || svg.nodeName.toLowerCase() !== 'svg') throw new Error('no <svg> root');
+  if (!svg.getAttribute('viewBox')){
+    const w = parseFloat(svg.getAttribute('width')) || TX_W;
+    const h = parseFloat(svg.getAttribute('height')) || TX_H;
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  }
+  svg.setAttribute('width', TX_W);
+  svg.setAttribute('height', TX_H);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+  if (!svg.getAttribute('xmlns')) svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  const st = doc.createElementNS('http://www.w3.org/2000/svg', 'style');
+  st.textContent = TX_FONTCSS || '';
+  svg.insertBefore(st, svg.firstChild);
+  return new XMLSerializer().serializeToString(svg);
+}
+function txExtractSVGs(html){
+  const out = [];
+  const re = /<svg[\s\S]*?<\/svg>/gi;
+  let m; while ((m = re.exec(html)) !== null) out.push(m[0]);
+  return out;
+}
+function txDrawToBlob(img, scale){
+  const c = document.createElement('canvas');
+  c.width = TX_W * scale; c.height = TX_H * scale;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  // cover-fit: a 1024x1024 generation crops to 16:9 rather than letterboxing
+  // into bars, which would break the safe margins and the squint test.
+  const sr = img.width / img.height, dr = TX_W / TX_H;
+  let sw = img.width, sh = img.height, sx = 0, sy = 0;
+  if (sr > dr){ sw = img.height * dr; sx = (img.width - sw) / 2; }
+  else if (sr < dr){ sh = img.width / dr; sy = (img.height - sh) / 2; }
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  return new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('canvas toBlob failed')), 'image/png'));
+}
+function txLoadImage(src){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error('image would not decode'));
+    img.src = src;
+  });
+}
+async function txRenderItem(it){
+  const scale = txScale();
+  try {
+    let url, revoke = false;
+    if (it.kind === 'svg'){
+      if (TX_FONTSTATE !== 'ok') throw new Error('fonts not loaded — would rasterise as serif');
+      const norm = txNormaliseSVG(it.source);
+      url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(norm);
+    } else {
+      url = it.source; revoke = false;
+    }
+    const img = await txLoadImage(url);
+    it.natural = img.width + '×' + img.height;
+    it.blob = await txDrawToBlob(img, scale);
+    if (it.preview) URL.revokeObjectURL(it.preview);
+    it.preview = URL.createObjectURL(it.blob);
+    it.err = null;
+    if (revoke) URL.revokeObjectURL(url);
+  } catch(e){
+    it.err = e.message; it.blob = null; it.preview = null;
+  }
+}
+function txScale(){ const el = document.getElementById('tx-scale'); return el && el.value === '2' ? 2 : 1; }
+function txFreeSlot(prefer){
+  const used = new Set(TX_ITEMS.map(i => i.slot));
+  if (prefer && !used.has(prefer)) return prefer;
+  return thumbAllKeys().find(k => !used.has(k)) || '';
+}
+function txGuessSlot(name){
+  const m = String(name||'').toLowerCase().match(/(design|chat|gemini|gpt|recraft)[^0-9]{0,3}([1-3])/);
+  return m ? (m[1] + '-' + m[2]) : '';
+}
+async function txAddFiles(files){
+  const list = Array.from(files || []);
+  if (!list.length) return;
+  const fontFile = list.find(f => /fonts_b64|font.*\.css$/i.test(f.name));
+  if (fontFile){ txFontFile(fontFile); if (list.length === 1) return; }
+  for (const f of list){
+    if (f === fontFile) continue;
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    try {
+      if (ext === 'svg'){
+        const txt = await f.text();
+        TX_ITEMS.push({ name:f.name, kind:'svg', source:txt, slot:txFreeSlot(txGuessSlot(f.name)) });
+      } else if (ext === 'html' || ext === 'htm'){
+        const svgs = txExtractSVGs(await f.text());
+        if (!svgs.length){ toast(`✗ ${f.name} contains no <svg> — re-export with the SVG frame requirement.`,'err'); continue; }
+        svgs.forEach((sv, ix) => TX_ITEMS.push({
+          name: f.name.replace(/\.html?$/i,'') + ' · frame ' + (ix+1),
+          kind:'svg', source:sv, slot:txFreeSlot(ix === 0 ? txGuessSlot(f.name) : '')
+        }));
+      } else if (['png','jpg','jpeg','webp'].includes(ext)){
+        TX_ITEMS.push({ name:f.name, kind:'raster', source:URL.createObjectURL(f), slot:txFreeSlot(txGuessSlot(f.name)) });
+      } else {
+        toast(`✗ ${f.name} — svg, html, png, jpg or webp only.`,'warn');
+      }
+    } catch(e){ toast(`✗ ${f.name} — ${e.message}`,'err'); }
+  }
+  txRenderPanel();
+  for (const it of TX_ITEMS) if (!it.blob && !it.err) await txRenderItem(it);
+  txRenderPanel();
+}
+async function txAddPasted(){
+  const el = document.getElementById('tx-paste');
+  const raw = (el && el.value || '').trim();
+  if (!raw){ toast('Nothing pasted.','warn'); return; }
+  const svgs = txExtractSVGs(raw);
+  if (!svgs.length){ toast('✗ No <svg> found in that markup.','err'); return; }
+  svgs.forEach((sv, ix) => TX_ITEMS.push({ name:'pasted · frame ' + (ix+1), kind:'svg', source:sv, slot:txFreeSlot('') }));
+  el.value = '';
+  txRenderPanel();
+  for (const it of TX_ITEMS) if (!it.blob && !it.err) await txRenderItem(it);
+  txRenderPanel();
+}
+function txSetSlot(ix, val){ if (TX_ITEMS[ix]) { TX_ITEMS[ix].slot = val; txRenderPanel(); } }
+function txRemove(ix){
+  const it = TX_ITEMS[ix];
+  if (it){ if (it.preview) URL.revokeObjectURL(it.preview); if (it.kind==='raster') URL.revokeObjectURL(it.source); }
+  TX_ITEMS.splice(ix,1); txRenderPanel();
+}
+function txClear(){ while (TX_ITEMS.length) txRemove(0); txRenderPanel(); }
+async function txRerenderAll(){
+  toast('⏳ Re-rendering at ' + (txScale()===2 ? '2560×1440' : '1280×720') + '...');
+  for (const it of TX_ITEMS) await txRenderItem(it);
+  txRenderPanel();
+  toast('✓ Re-rendered ' + TX_ITEMS.filter(i=>i.blob).length + ' of ' + TX_ITEMS.length);
+}
+function txSaveOne(ix){
+  const it = TX_ITEMS[ix];
+  if (!it || !it.blob){ toast('Nothing to save for that row.','warn'); return; }
+  if (!it.slot){ toast('Assign a slot first — the judge needs the filename to identify the tool.','warn'); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(it.blob); a.download = it.slot + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(a.href), 4000);
+  toast('✓ ' + it.slot + '.png');
+}
+function txSaveAll(){
+  const ready = TX_ITEMS.filter(i => i.blob && i.slot);
+  if (!ready.length){ toast('Nothing rendered yet.','warn'); return; }
+  const slots = ready.map(i => i.slot);
+  if (new Set(slots).size !== slots.length){ toast('✗ Two rows share a slot — fix the assignments first.','err'); return; }
+  ready.forEach((it, n) => setTimeout(() => txSaveOne(TX_ITEMS.indexOf(it)), n * 320));
+  toast(`⏳ Saving ${ready.length} PNG${ready.length===1?'':'s'} — allow multiple downloads if the browser asks.`);
+}
+function txDropHandlers(){
+  const z = document.getElementById('tx-drop'); if (!z) return;
+  z.ondragover = e => { e.preventDefault(); z.classList.add('over'); };
+  z.ondragleave = () => z.classList.remove('over');
+  z.ondrop = e => { e.preventDefault(); z.classList.remove('over'); txAddFiles(e.dataTransfer.files); };
+}
+function txPanelHTML(){
+  const fs = TX_FONTSTATE;
+  const fontLine = fs === 'ok'
+    ? `<span class="tx-dot ok"></span>fonts embedded · ${TX_FAMILIES.join(' · ')} · cached offline`
+    : fs === 'loading'
+      ? `<span class="tx-dot wait"></span>loading fonts_b64.css...`
+      : `<span class="tx-dot bad"></span>fonts missing — SVG export blocked, it would rasterise as serif <button class="btn ghost tiny" onclick="txLoadFonts()">Retry fetch</button><label class="btn ghost tiny" style="cursor:pointer">Drop _RT_fonts_b64.css<input type="file" accept=".css" hidden onchange="txFontFile(this.files[0])"></label>`;
+
+  const rows = TX_ITEMS.map((it, ix) => {
+    const opts = thumbAllKeys().map(k => `<option value="${k}"${k===it.slot?' selected':''}>${k}</option>`).join('');
+    return `<div class="tx-item ${it.err ? 'err' : (it.blob ? 'ok' : '')}">
+      ${it.preview ? `<img class="tx-thumb" src="${it.preview}" alt="">` : `<div class="tx-thumb"></div>`}
+      ${it.preview ? `<img class="tx-mini" src="${it.preview}" alt="" title="168px squint check">` : ''}
+      <div class="tx-meta">
+        <div class="tx-name">${escapeHtml(it.name)}</div>
+        <div class="tx-sub2 ${it.err?'err':''}">${it.err ? '✗ ' + escapeHtml(it.err) : (it.kind === 'svg' ? 'vector' : 'raster ' + (it.natural||'')) + ' → ' + (txScale()===2?'2560×1440':'1280×720')}</div>
+      </div>
+      <select onchange="txSetSlot(${ix}, this.value)"><option value="">— slot —</option>${opts}</select>
+      <button class="btn ghost tiny" onclick="txSaveOne(${ix})" ${it.blob?'':'disabled'}>⬇</button>
+      <button class="btn ghost tiny" onclick="txRemove(${ix})">✕</button>
+    </div>`;
+  }).join('');
+
+  const ready = TX_ITEMS.filter(i => i.blob && i.slot).length;
+  return `
+    <div class="tx-drop" id="tx-drop" onclick="document.getElementById('tx-file').click()">
+      <div class="tx-drop-h">Drop candidates here</div>
+      <div class="tx-drop-s">.svg · .html (frames extracted) · .png / .jpg — or click to browse</div>
+      <input type="file" id="tx-file" multiple hidden accept=".svg,.html,.htm,.png,.jpg,.jpeg,.webp,.css" onchange="txAddFiles(this.files); this.value=''">
+    </div>
+    <div class="tx-fonts">${fontLine}</div>
+    ${TX_ITEMS.length ? `<div class="tx-list">${rows}</div>` : ''}
+    <div class="row" style="margin-top:10px;gap:7px;align-items:center;flex-wrap:wrap">
+      <select id="tx-scale" onchange="txRerenderAll()" style="font-size:11px;padding:4px 6px">
+        <option value="1">1280×720</option>
+        <option value="2">2560×1440 (2×)</option>
+      </select>
+      <button class="btn primary tiny" onclick="txSaveAll()" ${ready?'':'disabled'}>⬇ Save all${ready?' ('+ready+')':''}</button>
+      ${TX_ITEMS.length ? `<button class="btn ghost tiny" onclick="txClear()">Clear</button>` : ''}
+      <span class="spacer"></span>
+      <span class="mono" style="font-size:10px;color:var(--ink-soft)">named for the slot · ready for step 3</span>
+    </div>
+    <details style="margin-top:9px">
+      <summary style="font-family:var(--font-mono);font-size:10px;color:var(--ink-soft);cursor:pointer">or paste SVG markup</summary>
+      <textarea id="tx-paste" rows="3" placeholder="Paste one or more &lt;svg&gt;...&lt;/svg&gt; blocks" style="margin-top:6px"></textarea>
+      <button class="btn ghost tiny" style="margin-top:6px" onclick="txAddPasted()">Add pasted SVG</button>
+    </details>`;
+}
+function txRenderPanel(){
+  const host = document.getElementById('tx-panel');
+  if (!host) return;
+  const scale = txScale();
+  host.innerHTML = txPanelHTML();
+  const sel = document.getElementById('tx-scale'); if (sel) sel.value = String(scale);
+  txDropHandlers();
 }
 
 // ── Step 3 · judging payload ────────────────────────────────────────
@@ -3182,6 +3472,13 @@ function thumbBody3_8(ep){
     <div class="flow-step-h"><span class="fn">2</span><span class="ft">Five payloads, five tools</span><span class="fs">3 candidates each · 15 samples total</span></div>
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px">Each payload is written for how that tool actually takes direction — code-exact hex for the two that write code, plain-language art direction with the text quoted literally for the two that generate images. Run all five, ask each for three archetypes.</p>
     <div class="tv-grid">${cards}</div>
+    <div style="font-size:12px;color:var(--ink-soft);margin:14px 0 4px;line-height:1.55">
+      <b>Export.</b> Claude Design has no PNG export and Recraft returns SVG, so drop whatever each tool gives you below —
+      vector, a standalone HTML export, or a raw generation — and Studio renders exact 1280×720 PNGs named for their slot.
+      Fonts are embedded into every frame before rasterising; without them an SVG silently renders as serif.
+      The small preview beside each row is the 168px squint check.
+    </div>
+    <div id="tx-panel"></div>
     <div class="payload-actions"><button class="btn ghost tiny" onclick="thumbCopySampleNames()" title="design-1.png … recraft-3.png">⧉ Copy the 15 sample filenames</button></div>
 
     <div class="flow-step-h"><span class="fn">3</span><span class="ft">Claude judges the 15</span><span class="fs">attach the PNGs · paste the JSON tail back</span></div>
@@ -3626,7 +3923,9 @@ You are producing an editable design on a canvas, not a description of one. Buil
 - Type: Barlow Condensed 900 for the number, Barlow Condensed 700 or DM Mono 500 for the words, DM Mono 400 at 9px for the MPD mark.
 - Build every object from vector primitives. No raster imagery, no gradients, no drop shadows, no bevels, no glow. Flat fills and hard edges only.
 - Set the number's cap height between 45 and 62 percent of frame height depending on archetype.
-- Export each frame as PNG at exactly 1280x720 and keep the canvas as the editable source.
+- **Build each frame as an inline SVG element with an exact viewBox of 0 0 1280 720.** Claude Design has no PNG export, so the deliverable is Export as standalone HTML, which Studio's exporter then rasterises. An SVG frame survives that round trip exactly; a div-and-CSS frame does not.
+- Do not apply CSS scaling or transforms to the SVG's own container. Scale inside the viewBox.
+- Deliver via Export in the upper right, Export as standalone HTML, then drop that .html into Studio's exporter under step 2. Keep the Design project itself as the editable source.
 - Add a fourth frame showing all three candidates at 168x94 side by side. That frame is the squint test — do not skip it.`
   },
   chat: {
@@ -3641,7 +3940,8 @@ Produce one self-contained HTML file containing three 1280x720 SVG candidates, e
 - Load Barlow Condensed, Barlow and DM Mono from Google Fonts with a condensed-sans fallback stack. The layout must not collapse if a font is missing at screenshot time.
 - Never apply clip-path and transform to the same element. Outer group clips, inner group transforms.
 - Each candidate gets an exact viewBox of 0 0 1280 720 and no CSS scaling on its export container.
-- Include a one-line screenshot instruction per candidate, and save each SVG as the editable source beside its PNG.`
+- Deliver the three candidates as three separate .svg files as well as the combined HTML, named design-1.svg, design-2.svg, design-3.svg by archetype order. Studio's exporter under step 2 takes those files directly and writes exact 1280x720 PNGs — no screenshotting.
+- Do not base64-embed fonts yourself. Studio injects the licensed faces at rasterise time, and a second set of @font-face rules in the file will conflict with them.`
   },
   gemini: {
     label: 'Gemini',
@@ -3685,7 +3985,7 @@ Recraft is the only tool in this set that returns true editable vector output un
 - Supply the palette explicitly as the six brand hexes and lock it before generating.
 - Keep type out of the generated asset. Generate the object or silhouette as vector, then set the number and the words in Barlow Condensed over it. Vector tools letterspace unpredictably.
 - Request a transparent background so the Ink ground is composited underneath at exact hex.
-- Export SVG as the editable source and PNG at 1280x720 as the deliverable.`
+- Export SVG. That file goes straight into Studio's exporter under step 2, which composites the Ink ground and writes the exact 1280x720 PNG — do not rely on Recraft's own raster export, which does not honour the ground colour reliably.`
   }
 };
 const THUMB_TOOLS = ['design','chat','gemini','gpt','recraft'];
