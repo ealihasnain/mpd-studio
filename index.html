@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MPD Studio · v3.11.0</title>
+<title>MPD Studio · v3.11.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&family=Barlow:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -314,7 +314,9 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 .tv-h{font-family:var(--font-display);font-weight:900;font-size:17px;text-transform:uppercase;line-height:1}
 .tv-sub{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-soft);letter-spacing:.07em;margin:4px 0 8px;text-transform:uppercase}
 .tv-note{font-size:12px;line-height:1.45;margin-bottom:9px}
-.tv-btns{display:flex;gap:6px;flex-wrap:wrap}
+.tv-btns{display:flex;flex-direction:column;gap:5px}
+.tv-plan{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.tv-plan-l{font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);width:52px;flex:0 0 52px;line-height:1.2}
 .sc-wrap{overflow-x:auto;margin-top:8px}
 .sc-table{width:100%;border-collapse:collapse;font-size:12px;min-width:520px}
 .sc-table th{font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);text-align:center;padding:6px 3px;border-bottom:1px solid var(--hairline);font-weight:500}
@@ -369,7 +371,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 <aside class="side">
   <div class="brand">
     MPD<br>Studio
-    <small id="app-ver">v3.11.0 · single-file · cloud-synced</small>
+    <small id="app-ver">v3.11.1 · single-file · cloud-synced</small>
   </div>
 
   <nav class="navlist" id="nav">
@@ -919,7 +921,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 // ════════════════════════════════════════════════════════════════════
 //  STATE SCHEMA + SEED
 // ════════════════════════════════════════════════════════════════════
-const APP_VERSION = '3.11.0';
+const APP_VERSION = '3.11.1';
 // Infrastructure contract versions Stage 3.6 depends on. Bump alongside any
 // change to the episode.json shape or the shell validator, and the payload's
 // preflight expectation moves with it automatically.
@@ -3545,20 +3547,26 @@ function thumbBody3_8(ep){
     const v = THUMB_VARIANTS[tool];
     const cls = (tool === 'design') ? 'tv-card rec' : 'tv-card';
     const flag = (tool === 'design') ? ' · start here' : '';
+    // Each plan is its own payload, so each plan gets the full set. Download
+    // is not a nicety — it is the truncation-proof path, and the free tier is
+    // exactly where a long payload gets pasted into a cramped window.
     const btns = v.plans
-      ? Object.keys(THUMB_PLANS).map(pl => `<button class="btn ${pl==='pro'?'primary':'ghost'} tiny" onclick="copyPayload('3.8','${tool}:${pl}')" title="${THUMB_PLANS[pl]} — copy payload">📋 ${THUMB_PLANS[pl]}</button>`).join('')
-      : `<button class="btn primary tiny" onclick="copyPayload('3.8','${tool}')">📋 Copy</button>`;
-    const dl = v.plans
-      ? `<button class="btn ghost tiny" onclick="downloadPayload('3.8','${tool}:pro')" title="Paid-tier payload as .md">⬇</button>`
-      : `<button class="btn ghost tiny" onclick="downloadPayload('3.8','${tool}')" title="Saves as .md — attach in the fresh chat.">⬇ .md</button>`;
+      ? Object.keys(THUMB_PLANS).map(pl => `<div class="tv-plan">
+          <span class="tv-plan-l">${THUMB_PLANS[pl]}</span>
+          <button class="btn ${pl==='pro'?'primary':'ghost'} tiny" onclick="copyPayload('3.8','${tool}:${pl}')" title="${THUMB_PLANS[pl]} — copy payload">📋 Copy</button>
+          <button class="btn ghost tiny" onclick="downloadPayload('3.8','${tool}:${pl}')" title="${THUMB_PLANS[pl]} — save as .md, immune to paste truncation">⬇ .md</button>
+          <button class="btn ghost tiny" onclick="previewPayload('3.8','${tool}:${pl}')">Preview</button>
+        </div>`).join('')
+      : `<div class="tv-plan">
+          <button class="btn primary tiny" onclick="copyPayload('3.8','${tool}')">📋 Copy</button>
+          <button class="btn ghost tiny" onclick="downloadPayload('3.8','${tool}')" title="Saves as .md — attach in the fresh chat.">⬇ .md</button>
+          <button class="btn ghost tiny" onclick="previewPayload('3.8','${tool}')">Preview</button>
+        </div>`;
     return `<div class="${cls}">
       <div class="tv-h">${v.label}</div>
       <div class="tv-sub">${v.sub}${flag}</div>
       <div class="tv-note">${v.note}</div>
-      <div class="tv-btns">
-        ${btns}${dl}
-        <button class="btn ghost tiny" onclick="previewPayload('3.8','${tool}${v.plans?':pro':''}')">Preview</button>
-      </div>
+      <div class="tv-btns">${btns}</div>
     </div>`;
   }).join('');
 
