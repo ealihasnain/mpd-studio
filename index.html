@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MPD Studio · v3.13.0</title>
+<title>MPD Studio · v3.14.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&family=Barlow:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -391,7 +391,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 <aside class="side">
   <div class="brand">
     MPD<br>Studio
-    <small id="app-ver">v3.13.0 · single-file · cloud-synced</small>
+    <small id="app-ver">v3.14.0 · single-file · cloud-synced</small>
   </div>
 
   <nav class="navlist" id="nav">
@@ -941,7 +941,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 // ════════════════════════════════════════════════════════════════════
 //  STATE SCHEMA + SEED
 // ════════════════════════════════════════════════════════════════════
-const APP_VERSION = '3.13.0';
+const APP_VERSION = '3.14.0';
 // Infrastructure contract versions Stage 3.6 depends on. Bump alongside any
 // change to the episode.json shape or the shell validator, and the payload's
 // preflight expectation moves with it automatically.
@@ -3941,11 +3941,13 @@ function thumbBody3_8(ep){
       The small preview beside each row is the 168px squint check.
     </div>
     <div id="tx-panel"></div>
-    <div class="flow-step-h" style="margin-top:16px"><span class="fn">2b</span><span class="ft">Compose</span><span class="fs">Gemini and ChatGPT supply the object · Studio sets the type</span></div>
+    <div class="flow-step-h" style="margin-top:16px"><span class="fn">2b</span><span class="ft">Compose</span><span class="fs">optional · build a candidate from a drawn object</span></div>
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px;line-height:1.55">
-      Load the keyed object, pick an archetype, type the number and the words. The type is set in real Barlow Condensed at
-      exact brand hex and the budget is enforced here rather than hoped for, so a composed candidate cannot break G10 on
-      palette, typeface or text length. Claude Design's whole-frame candidates skip this and go straight through the exporter above.
+      <b>Skip this unless you need it.</b> All three tools now return whole candidates, so the normal route is step 2 straight
+      into the exporter. Use the composer when you have an <i>object</i> rather than a thumbnail — a hand, a silhouette, an
+      illustration a code model draws badly — generated anywhere, or lifted from the asset library. It keys the background out,
+      places the object per archetype, and sets the type in real Barlow Condensed at exact brand hex with the budget enforced
+      at the input. A composed candidate cannot break G10 on palette, typeface, rotation or text length.
     </p>
     <div id="co-panel"></div>
     <div class="sn-bar">
@@ -4387,39 +4389,73 @@ function resetEpisode(){
 const THUMB_PROTOCOL = [
 '### What you are making',
 '',
-'One flat vector object per image. Not a thumbnail, not a poster, not a scene, not a composition. A single illustrated object on a plain background, the way an icon or a pictogram is drawn.',
+'Three complete thumbnails, written as SVG code. One per archetype. You are not generating a picture and you are not describing one \u2014 you are writing markup that Studio rasterises with the licensed typefaces.',
 '',
-'**There is no text in the image. None.** No words, no numbers, no letters, no labels on any part of the object, no captions, no signatures, no watermark. Typography is added afterwards by another system and any text you draw has to be thrown away, which wastes the whole generation. If the concept seems to need a label, it does not \u2014 draw the object and stop.',
+'This is why SVG rather than an image: the type comes out exactly right, the hex is exactly the brand palette, nothing is misspelled, and the result stays editable. Every raster attempt at this so far has failed on typography or colour.',
 '',
-'### The background',
+'### The three elements \u2014 count them',
 '',
-'Flat, solid, pure magenta, hex FF00FF, edge to edge. Nothing else on it. No gradient, no vignette, no shadow cast onto it, no floor, no horizon, no table, no room. The magenta is removed automatically afterwards, which is why it must be flat and why nothing may share its colour.',
+'Exactly three. Not four.',
 '',
-'Leave clear space on all four sides. Do not let the object touch the edge of the frame.',
+'1. ONE object, drawn with paths, rects, circles and polygons. Flat fills, hard edges. No labels written on it, no text anywhere inside it.',
+'2. ONE number.',
+'3. ONE to three words.',
 '',
-'### How the object is drawn',
+'Plus two fixed marks that do not count: the MPD mark, and the amber signature rule under the number.',
 '',
-'- Flat vector illustration. Hard edges. Solid fills. The look of a printed pictogram or a transit sign, not a photograph of a thing.',
-'- Two to four solid colours in the object at most. Choose from warm off-white E4DDD0, slate blue-grey 8BA8B5, strong red E63946, and near-black 2A2520. No other colours anywhere.',
-'- No gradients, no shading, no highlights, no drop shadows, no reflections, no ambient occlusion, no glow, no outline stroke unless it is part of the drawing.',
-'- No texture, no grain, no noise, no grunge, no distress, no scratches, no paper fibre, no wood grain, no brush marks.',
-'- No photorealism, no 3D rendering, no depth of field, no lens effects, no smoke, no dust, no embers, no sparks.',
-'- No logos, no brand marks, no user interface, no charts, no graphs.',
-'- Silhouettes and hands are allowed and often the strongest choice. A hand covering, removing, gripping or crossing out the object reads as human presence without a face. Draw hands as flat silhouettes, never photographic, and never include a face, a head or a full body.',
+'### Absolute bans',
 '',
-'### Composition of the object itself',
+'- No gradients, no blurs, no shadows, no glows, no opacity used to invent shades.',
+'- No decorative border, frame line, or inner rule around the canvas edge. That is a fourth element.',
+'- No texture, no grain, no distress, no hand-drawn wobble.',
+'- No faces, no heads, no full bodies. Hands and silhouettes are allowed and are the strongest stand-in for human presence on a faceless channel \u2014 draw them as flat shapes.',
+'- No charts, no graphs, no axes, no plotted data.',
+'- No explanatory arrows, callout boxes, captions, legends or secondary labels.',
+'- No rotation on anything. Nothing is tilted.',
+'- No external references: no linked image, no remote font, no script, no filter needing an asset.',
 '',
-'The object should be readable as a single shape at very small size. One recognisable silhouette, centred, filling most of the clear area. If a viewer could not name the object from its outline alone at the size of a postage stamp, simplify it until they could.',
+'### Text budget',
 '',
-'### What a failed attempt looks like',
+'- Four words maximum in total, including the number.',
+'- Fourteen characters maximum across the words, not counting the number.',
+'- Six glyphs maximum in the number.',
+'- Exactly one number in the whole image. If the brief offers several figures, pick the strongest and discard the rest.',
 '',
-'A dramatic dark scene containing a rendered three-dimensional object with words written across its parts, a caption, a callout box, an arrow, and a small chart, sitting on a textured floor under moody lighting. Every element of that is wrong here. What is wanted instead is the single object from that scene, drawn flat, unlabelled, alone on magenta.',
+'### Colour',
 '',
-'### Print this line before each image, then generate',
+'- Ground: ink 2A2520, flat, edge to edge.',
+'- Number: amber F5C518. Use red E63946 instead only when the number represents a loss.',
+'- Words: canvas E4DDD0.',
+'- Object: canvas E4DDD0, slate 8BA8B5, or red E63946. One or two of them, solid.',
+'- Teal 2DB89D is structural only \u2014 a hairline or a divider, never the colour of the object.',
+'- No other colours exist. Not off-white, not grey, not navy, not a lighter tint of one of the above.',
 '',
-'OBJECT n of 3 \u2014 subject: [one thing] \u2014 colours: [2 to 4 from the list] \u2014 background: flat magenta \u2014 text in image: none \u2014 photoreal: no \u2014 faces: no',
+'### Type and the signature rule',
 '',
-'If the concept cannot be drawn without text, say so plainly and propose a different object rather than generating one with words in it.'
+'- The number: font-family Barlow Condensed, font-weight 900.',
+'- The words: font-family Barlow Condensed, font-weight 700, uppercase.',
+'- Directly under the number, a rect nine pixels tall in amber F5C518, starting at the number\u2019s left edge and running its width. This is the channel signature and it appears on every candidate.',
+'- The mark: the word MPD alone, font-family DM Mono, 15px, slate 8BA8B5, in one corner. No episode code, no stage number, no slashes.',
+'',
+'### Composition',
+'',
+'Asymmetric, never centred. The object occupies at least a quarter of the frame and may bleed off one edge. Sixteen pixels of clear margin. Keep the lower right 90 by 40 pixels empty for the duration stamp. Generous empty ground is what makes the number readable small \u2014 but empty ground is not the same as a small number.',
+'',
+'### One open loop',
+'',
+'Exactly one curiosity device per candidate: a redaction bar, a contradiction, an interrupted or broken object, or an arrow leaving the frame. Zero reads as a diagram. Two reads as noise.',
+'',
+'### The five archetypes \u2014 pick three different ones',
+'',
+'- **Number Slam** \u2014 the figure dominant, object bleeding off the right edge.',
+'- **Object plus Redaction** \u2014 the object partly blacked out by an ink bar, the number intact.',
+'- **Broken Line** \u2014 a single line that snaps and drops, the number at the break.',
+'- **Hand Intervention** \u2014 a flat hand silhouette covering, removing or crossing out the object.',
+'- **Two-State Split** \u2014 a teal hairline divides then from now.',
+'',
+'### Print this before each candidate, then write the SVG',
+'',
+'CANDIDATE n of 3 \u2014 archetype: [name] \u2014 object: [one thing] \u2014 number: [figure, from the brief] \u2014 words: [n words, n characters] \u2014 number cap height: [n% of 720] \u2014 open loop: [device] \u2014 elements: 3 \u2014 border: none \u2014 rotation: none'
 ].join('\n');
 
 // One payload cannot serve every tool. Claude Design WRITES CODE, so its
@@ -4454,82 +4490,80 @@ You are producing an editable design on a canvas, not a description of one. Buil
   },
   gemini: {
     label: 'Gemini',
-    sub: 'objects only · type set by Studio',
-    note: 'Supplies the flat object. Never the text — that is set in step 2b, where the palette and budget cannot be broken.',
+    sub: 'SVG code · rasterised by Studio',
+    note: 'Writes whole candidates as SVG. Proven on EP002 — exact hex, real typefaces, editable, nothing misspelled.',
     plans: {
       free: `### Plan · free tier
 
-On the free tier Gemini will often answer a picture request with a description instead of an image, and will quietly serve a lower-quality model. Counter both:
+Writing SVG is far kinder to a free tier than generating images: no image quota, no downgraded image model, no daily cap. The remaining risks are truncation and stopping early.
 
-- Open with a bare instruction: **Generate an image.** Not "can you", not "I would like". A question gets answered in words.
-- Add: do not describe the image, do not explain your reasoning, do not ask clarifying questions. Return the image only.
-- Ask for the highest quality and largest size available on this account, 16:9.
-- One image per message, three messages, same chat. The three-image mandate still holds. Do not ask for all three in one message, which degrades every image in the batch, and do not start a new chat between them, which loses the constraints.
-- If it returns text instead of a picture, do not rephrase the brief. Reply with exactly: Generate the image now. Re-explaining restarts the negotiation.
-- If it stops after one or two, reply with exactly: Continue. Generate object 2 of 3. Do not restate the brief.
+- One candidate per message, three messages, same chat. A single message asking for all three tends to truncate the third.
+- If a code block is cut off, reply with exactly: Continue the SVG from where it stopped. Do not restart it.
+- Do not accept a description of a design. If it explains instead of writing markup, reply: Write the SVG code only.
+- Re-explaining the brief restarts the negotiation and loses constraints. Keep nudges to one short line.
+- If it stops after one or two, reply with exactly: Continue. Candidate 2 of 3. Do not restate the brief.
 - If the text inside the image comes out mangled, regenerate rather than repair. Free-tier edit passes rewrite the whole composition and usually make it worse.
-- Expect roughly one usable result in three. Generate five per archetype and keep the best. Objects are far easier for a free tier than a full thumbnail was, so the hit rate should be better than it was on EP002.`,
+- Judge each candidate by opening its PNG from Studio's exporter, not by reading the code. Markup that reads fine can still compose badly.`,
       pro: `### Plan · paid tier
 
 On a paid tier ask for the strongest image model on the account and use the headroom:
 
-- Three archetypes, and within each you may request several variations and pick. Variations of one archetype do not count toward the three.
-- Ask explicitly for maximum resolution and 16:9. Upscale after selection, never before.
+- Three archetypes. Within each you may ask for a variation and pick; variations do not count toward the three.
+- Iterate on a winner by naming the single element to change and stating that the rest of the markup stays byte-identical.
 - Iterate on a winner with targeted edits: keep the composition, change only the named element. Paid-tier edit passes hold the rest of the frame steady.
-- There is no text to get wrong here any more. Judge on silhouette clarity instead: does the object read as one shape at postage-stamp size.`
+- Text cannot be misspelled in SVG the way it is in a generated image, so spend that attention on composition: is the number really at 45 percent of frame height, and does the object read as one shape when small.`
     },
-    sop: `### Tool · Gemini · object brief
+    sop: `### Tool · Gemini · SVG author
 
-You are the image generator. You are producing source artwork, not finished thumbnails. Read all of this before generating anything.
+Write SVG code. Do not generate images. Gemini produced usable candidates this way on EP002 and produced nothing usable when asked for pictures.
 
-**Produce exactly THREE images in this session, one object per archetype below.** After each, print OBJECT n OF 3 COMPLETE. Do not stop at one. Do not stop at two. If you have printed fewer than three completion lines, you are not finished.
+**Three candidates, three different archetypes, in this one session.** Print DONE n OF 3 after each. Do not stop at one or two.
 
 ${THUMB_PROTOCOL}
 
 ### Gemini specifics
 
-- Do not narrate, do not explain, do not ask a clarifying question. Generate.
-- Aspect does not matter here. The object is cut out and repositioned afterwards, so square is fine.
-- Gemini drifts back toward photorealism within a few turns. Restate flat vector, hard edges, solid fills, flat magenta background at the top of every one of the three generations.
-- Gemini has a strong habit of writing labels onto objects. If any text appears in the output, regenerate rather than editing, and add: absolutely no text, letters or numbers anywhere in the image.`,
+- Emit each candidate in its own fenced code block, starting at the svg element and ending at its close. No commentary inside the block.
+- Do not add a viewBox of any other size, and do not scale the contents with a transform. Draw at 1280 by 720 coordinates directly.
+- Gemini tends to add a thin outer border rectangle. Do not. The ground rect fills the canvas and nothing outlines it.
+- Gemini tends to write the episode code next to the mark. The mark is the three letters MPD and nothing else.`,
   },
   gpt: {
     label: 'ChatGPT',
-    sub: 'objects only · type set by Studio',
-    note: 'Supplies the flat object. Cleanest silhouettes of the two; can often return a transparent background directly.',
+    sub: 'SVG code · rasterised by Studio',
+    note: 'Writes whole candidates as SVG. Keep it terse — this one elaborates unless told three elements means three.',
     plans: {
       free: `### Plan · free tier
 
-The free tier caps image generations per day, downgrades the model once the cap is near, and will substitute a written description when it cannot generate. Work with that:
+SVG costs no image quota, so the free tier's image caps stop mattering. What remains is a shorter context and a tendency to truncate long code.
 
-- Open with a bare instruction: **Generate an image.** Then the brief. A polite question gets a paragraph back.
-- Add: return only the image, no commentary, no clarifying questions.
-- One archetype per message, three messages, same chat. All three still get produced. A fresh chat per archetype loses the constraints and is how EP002 ended up with two mismatched candidates.
-- If it stops after one or two, reply with exactly: Continue. Generate object 2 of 3. Do not restate the brief, which invites reinterpretation.
+- One candidate per message, three messages, same chat.
+- Ask for the code only, with no commentary before or after the block.
+- A fresh chat per candidate loses the constraints and is how EP002 ended up with one mismatched poster. Same chat, three messages.
+- If it stops after one or two, reply with exactly: Continue. Candidate 2 of 3. Do not restate the brief, which invites reinterpretation.
 - Ask for 16:9. If it refuses the aspect ratio, accept square and let Studio's exporter crop it — do not fight it and burn a generation.
-- Budget the daily cap: three objects at two attempts each. Spend spare attempts on the object reading least clearly as a silhouette.
-- If the cap is hit before three archetypes exist, save what you have and finish the rest tomorrow. Two candidates from one tool is a broken A/B set, not a shortcut.`,
+- If the chat gets long and it starts drifting off the palette, start a fresh chat and paste the payload again rather than correcting it repeatedly.`,
       pro: `### Plan · paid tier
 
-- Ask for the highest-fidelity image model on the account, 16:9, maximum resolution.
-- Three archetypes, two variations within each, choose one per archetype. Variations do not count toward the three.
+- Longer reasoning is available here; use it to check the cap-height and text-budget arithmetic before writing each block.
+- Three archetypes, optionally two variations within each, choose one per archetype.
 - Use targeted edits on a winner: name the single element to change and instruct that everything else stays fixed.
-- Longer prompts are safe here, but keep the quoted text block short and isolated at the end — that is what protects glyph accuracy.`
+- Ask it to state the number's font-size and the resulting cap height as a percentage of 720 before each block. That one line catches the undersized-number failure.`
     },
-    sop: `### Tool · ChatGPT · object brief
+    sop: `### Tool · ChatGPT · SVG author
 
-You are the image generator. You are producing source artwork, not finished thumbnails. Read all of this before generating anything.
+Write SVG code. Do not generate images. The image path was tried on EP002 and returned a single photorealistic poster breaking almost every rule below; code does not have that failure mode.
 
-**Produce exactly THREE images in this session, one object per archetype below.** After each, print OBJECT n OF 3 COMPLETE. Do not stop at one. Do not stop at two. If you have printed fewer than three completion lines, you are not finished.
+**Three candidates, three different archetypes, in this one session.** Print DONE n OF 3 after each. Do not stop at one or two.
 
 ${THUMB_PROTOCOL}
 
 ### ChatGPT specifics
 
-- Do not narrate, do not explain, do not ask a clarifying question. Generate.
-- Aspect does not matter here. The object is cut out and repositioned afterwards, so square is fine.
-- If the tool offers a transparent background, use it and say so, and skip the magenta. Otherwise flat magenta.
-- Keep each prompt short. A long prompt pulls this model back toward scene-building, and a scene is not what is wanted.`,
+- Emit each candidate in its own fenced code block. No preamble inside the block.
+- Draw at 1280 by 720 coordinates directly. No transform scaling, no nested viewBox.
+- Resist elaboration. This model's failure mode is adding a second object, a caption or a subtitle to make the image feel complete. Three elements is complete.
+- If a concept seems to need a label to be understood, the concept is wrong for a thumbnail. Choose a different object.`,
   }
 };
 const THUMB_TOOLS = ['design','gemini','gpt'];
@@ -4737,7 +4771,7 @@ async function buildPayload(sid, variant){
     return `- **${g}** · ${map[g]||'(see Reference)'}`;
   }).join('\n');
 
-  return `# MPD · Stage ${sid} · ${meta.name} · ${ep.day}
+  const payloadText = `# MPD · Stage ${sid} · ${meta.name} · ${ep.day}
 
 You are producing one creative artifact for the **MoneyPatternsDecoded** YouTube channel. Manual production. One stage, one chat. Do not chain stages.
 
@@ -4867,6 +4901,87 @@ The \`stage\` and \`day\` fields must match exactly — the Cockpit rejects mism
 
 *Payload generated by MPD Studio v${APP_VERSION} · ${new Date().toISOString().slice(0,16)} · paste this entire message into a fresh Claude chat as the first message.*
 `;
+  return (sid === '3.8' && variant) ? thumbTrim(payloadText, variant, ep) : payloadText;
+}
+
+// The generic stage payload is written for a Claude chat producing a document:
+// it carries the voice canon, a self-rating contract and a JSON tail, and it
+// tells the model to "produce the artifact in full". Handed to an image or SVG
+// tool that is meant to produce three candidates, those sections actively
+// mislead — EP002 produced one maximalist poster from ChatGPT and a set of
+// full SVG thumbnails from Gemini, both of which were the payload's own fault.
+// This strips what does not apply and replaces the output contract.
+function thumbTrim(text, variant, ep){
+  const tool = String(variant || '').split(':')[0];
+  const cut = (from, to) => {
+    const a = text.indexOf(from);
+    if (a < 0) return;
+    const b = to ? text.indexOf(to, a + from.length) : -1;
+    text = text.slice(0, a) + (b < 0 ? '' : text.slice(b));
+  };
+  // voice canon governs script writing, not drawing
+  cut('## Voice canon (locked)', '## Brand tokens');
+  // the self-rating contract and JSON tail belong to document stages
+  cut('## Output requirements', '\n---\n\n*Payload generated');
+
+  const epTok = _epToken(ep.day);
+  const svgTools = ['gemini','gpt','design'];
+  const isSvg = svgTools.includes(tool) && tool !== 'design';
+
+  const common = [
+'## Output requirements',
+'',
+'**Three candidates. Not one, not two.** Each on a different archetype. Print DONE n OF 3 after each.',
+'',
+'### The episode token is ' + epTok,
+'',
+'The Strategy Brief inlined above is an older document and contains the token D' + epTok.replace(/^EP/,'') + ' in its own header and footer. Ignore it. Nothing you produce carries an episode code at all \u2014 see the mark rule below.',
+'',
+'### The mark',
+'',
+'The only branding is the word MPD, set in DM Mono, 15px, slate 8BA8B5, in one corner. Nothing else. No episode code, no stage number, no slashes, no channel name, no logo. MPD // ' + 'D' + epTok.replace(/^EP/,'') + ' is wrong on three counts.',
+'',
+'### Fill the frame',
+'',
+'The number is the largest thing in the image by a wide margin: its cap height must be **at least 45 percent of the frame height**, and not more than 62 percent. A number occupying a quarter of the height is a failed candidate no matter how clean it looks, because the whole point is legibility at 168 pixels wide.',
+'',
+'No decorative border, no frame line, no inner rule around the edge of the canvas. That is a fourth element and it is banned.',
+'',
+'### Title tension',
+'',
+'The video title is close to: ' + (ep.topic || '') ,
+'',
+'The thumbnail text must share **zero content words** with it. If the title says LIE, the thumbnail may not say LIE.',
+''
+  ].join('\n');
+
+  const svgSpec = [
+'',
+'### Deliver SVG source, not a picture',
+'',
+'Write each candidate as SVG code. Do not generate a raster image and do not describe one.',
+'',
+'- Root element exactly: an svg with width 1280, height 720 and viewBox 0 0 1280 720.',
+'- Fonts by name only: font-family="Barlow Condensed" for the number and the words, font-family="DM Mono" for the mark. Do not embed fonts, do not link Google Fonts, do not pick a fallback stack. Studio injects the licensed faces when it rasterises, and a competing @font-face will conflict with them.',
+'- Colours as literal hex from the brand tokens above. No named colours, no rgb(), no opacity tricks to invent new shades.',
+'- No external references of any kind: no href to an image, no filter that needs a remote asset, no script.',
+'- Draw the object with paths, rects, circles and polygons. Flat fills, hard edges, no gradients, no shadows, no blur.',
+'- Put each candidate in its own fenced code block so it can be saved as one .svg file.',
+'',
+'Studio converts these to exact 1280x720 PNGs with the real typefaces, which is why SVG is wanted rather than an image: the type comes out right every time and the file stays editable.',
+''
+  ].join('\n');
+
+  const designSpec = [
+'',
+'### Delivery',
+'',
+'Export as standalone HTML per the tool section above, then drop it into Studio step 2 for rasterising.',
+''
+  ].join('\n');
+
+  return text + '\n' + common + (isSvg ? svgSpec : designSpec)
+       + '\n---\n\n*Purpose-built Stage 3.8 payload \u00b7 MPD Studio v' + APP_VERSION + ' \u00b7 ' + new Date().toISOString().slice(0,16) + '*\n';
 }
 
 async function copyPayload(sid, variant){
