@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MPD Studio · v3.11.2</title>
+<title>MPD Studio · v3.13.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&family=Barlow:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -363,6 +363,25 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 .sn-ic{font-size:14px;line-height:1;color:var(--teal-deep)}
 .sn-n{font-family:var(--font-mono);font-size:10px;line-height:1;font-weight:500;color:var(--ink-soft)}
 .sn-key{font-family:var(--font-mono);font-size:9px;color:var(--ink-soft);letter-spacing:.04em;flex:0 0 auto}
+/* composer (v3.13.0) */
+.co-grid{display:grid;grid-template-columns:minmax(210px,1fr) minmax(240px,1.35fr);gap:14px;margin-top:8px}
+@media(max-width:720px){.co-grid{grid-template-columns:1fr}}
+.co-form{display:flex;flex-direction:column;gap:4px}
+.co-l{font-family:var(--font-mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);margin-top:7px;display:flex;justify-content:space-between;align-items:baseline}
+.co-cap{font-family:var(--font-mono);font-size:8.5px;color:var(--ink-soft);opacity:.8;text-transform:none;letter-spacing:.02em}
+.co-hint{font-family:var(--font-mono);font-size:9px;color:var(--ink-soft);opacity:.85;margin-top:2px}
+.co-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.co-check{font-size:11.5px;display:flex;gap:6px;align-items:center;margin-top:9px;color:var(--ink-soft)}
+.co-budget{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.04em;margin-top:10px;padding:5px 7px}
+.co-budget.ok{background:#2DB89D1F;color:var(--teal-deep)}
+.co-budget.bad{background:#E639461F;color:var(--red)}
+.co-out{display:flex;flex-direction:column;gap:7px}
+.co-stage{background:var(--ink);aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.co-img{width:100%;height:100%;object-fit:contain;display:block}
+.co-mini-wrap{display:flex;align-items:center;gap:8px}
+.co-mini{width:168px;height:94px;background:var(--ink);flex:0 0 168px;overflow:hidden}
+.co-img168{width:168px;height:94px;object-fit:contain;display:block}
+.co-err{font-family:var(--font-mono);font-size:10px;color:var(--red);padding:10px}
 </style>
 </head>
 <body>
@@ -372,7 +391,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 <aside class="side">
   <div class="brand">
     MPD<br>Studio
-    <small id="app-ver">v3.11.2 · single-file · cloud-synced</small>
+    <small id="app-ver">v3.13.0 · single-file · cloud-synced</small>
   </div>
 
   <nav class="navlist" id="nav">
@@ -698,7 +717,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
           <tr><td><b>G7</b></td><td>3.6</td><td>Asset manifest complete (NEW vs REUSE) · country panels if required</td></tr>
           <tr><td><b>G8</b></td><td>3.7</td><td>A+V sync ≤ 50ms · duration matches the shell · picture fade and audio duck land together</td></tr>
           <tr><td><b>G9</b></td><td>3.7</td><td>Final master loudness −14 LUFS · −1 dBTP · no MP3 artifacts</td></tr>
-          <tr><td><b>G10</b></td><td>3.8</td><td>Thumbnail CTR criteria · ink ground · 3-element rule · text budget · one open loop · legible at 168px · grayscale-safe · 3 candidates, 3 archetypes</td></tr>
+          <tr><td><b>G10</b></td><td>3.8</td><td>Thumbnail CTR criteria · ink ground · 3-element rule · text budget · amber signature rule · teal structural only · no rotation · hands/silhouettes but no faces · one open loop · legible at 168px · 3 candidates, 3 archetypes</td></tr>
           <tr><td><b>G11</b></td><td>3.9 / 3.10</td><td>Title ≤60 chars · keyword in first 20 chars · corpus appended</td></tr>
           <tr><td><b>G12</b></td><td>all</td><td>Slop check: no banned phrasings, no AI tells, no fearmonger language</td></tr>
         </tbody>
@@ -922,7 +941,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 // ════════════════════════════════════════════════════════════════════
 //  STATE SCHEMA + SEED
 // ════════════════════════════════════════════════════════════════════
-const APP_VERSION = '3.11.2';
+const APP_VERSION = '3.13.0';
 // Infrastructure contract versions Stage 3.6 depends on. Bump alongside any
 // change to the episode.json shape or the shell validator, and the payload's
 // preflight expectation moves with it automatically.
@@ -1006,7 +1025,7 @@ const SEED_STATE = {
     '3.5': '- Word-level alignment required, not sentence-level.\n- No %CHAPTER% markers: Stage 3.6 derives chapter starts from the 3.2 VoiceScript part order.\n- Hand-check every number against the 3.1 brief. Whisper mangles dollar figures and years.',
     '3.6': '- Beat starts must equal a WORDS[i].start within 50ms. No guessed timestamps.\n- Bind every on-screen figure from the 3.1 brief, never from the caption transcript.\n- Validator green (BUILD/G6/GAP/CH) is a precondition for rating, not a nice-to-have.\n- Country panels (G7) required if topic implies international comparison.\n- Use ONLY brand palette tokens; reject any color outside the canon.',
     '3.7': '- Run Inspect first: it benchmarks every encoder configuration and reports the projected runtime before a frame is written.\n- Contact sheets before the master. It is the only check that looks at whether text fits its box.\n- Never force VP9 into MP4. If H.264 is unavailable, WebM VP9 is a valid YouTube master.',
-    '3.8': '- Ink ground, amber/canvas figures. Beige ground separates at ~1.6:1 in a feed; amber on ink is ~9:1.\n- Three candidates, three different archetypes — three variations of one idea is a wasted A/B test.\n- Text budget is hard: 4 words, 14 characters, 6 glyphs in the number.\n- Exactly one open-loop device per candidate. Zero reads as a chart, two reads as noise.\n- Every figure from the 3.1 brief. Never from captions, never rounded for effect.',
+    '3.8': '- Image models supply the object only, never the text. Type is set in Studio, step 2b.\n- Ink ground, amber/canvas figures. Beige ground separates at ~1.6:1 in a feed; amber on ink is ~9:1.\n- Three candidates, three different archetypes — three variations of one idea is a wasted A/B test.\n- Text budget is hard: 4 words, 14 characters, 6 glyphs in the number.\n- Exactly one open-loop device per candidate. Zero reads as a chart, two reads as noise.\n- Every figure from the 3.1 brief. Never from captions, never rounded for effect.',
     '3.9': '- Keyword in first 20 chars of title. Curiosity gap, not clickbait.\n- Description: hook in first 2 lines (search snippet), then chapter timestamps.\n- 5-8 tags, all keyword-adjacent, not generic.',
     '3.10': '- Append NEW assets to corpus with EP### as first-used.\n- Reserved rows promote to active when used.\n- Changelog: EP###, date shipped, total cycles, soft fails.',
   },
@@ -1055,11 +1074,13 @@ Ink 2A2520 is the ground. Canvas E4DDD0 and Amber F5C518 are the figures. The be
 
 Exactly three elements. There is no fourth.
 
-1. ONE object or silhouette. At least 25 percent of frame area, with a 3 to 1 luminance edge against the ground. Never a real person's face, never a stock photograph. Vector silhouette, flat object, or a chart form.
+1. ONE object or silhouette. At least 25 percent of frame area, with a 3 to 1 luminance edge against the ground. Never a face, a head or a full body, and never a photograph. Flat vector silhouettes only. Hands are permitted and are the strongest available stand-in for human presence on a faceless channel.
 2. ONE number. The most load-bearing figure in the episode, taken from the 3.1 Strategy Brief and from nowhere else. Barlow Condensed 900. Amber by default, Red when the reveal is a loss.
-3. ONE to three words. What the number means. Barlow Condensed 700 or DM Mono 500, in Canvas.
+3. ONE to three words. What the number means. Barlow Condensed 700, in Canvas.
 
-Plus the MPD mark: DM Mono, 9px, Slate, one corner. The mark does not count as an element.
+Plus two fixed marks that do not count as elements: the MPD mark in DM Mono, Slate, one corner, and the signature amber rule directly under the number.
+
+Teal is structural only — hairlines and rules, never a subject colour. Type never rotates.
 
 ### Text budget (hard)
 
@@ -1067,13 +1088,13 @@ Four words maximum including the number's unit. Fourteen characters maximum of w
 
 ### Archetype — a different one per candidate
 
-- **Number Slam.** One figure at 60 percent of frame height, object bleeding off one edge.
-- **Two-State Split.** Vertical division, then and now, one number each, the second in Red.
+- **Number Slam.** One figure at 60 percent of frame height, object bleeding off the right edge.
+- **Two-State Split.** A hairline division, object on one side, the number on the other.
 - **Object plus Redaction.** The subject partly blacked out by an ink bar, the number intact.
-- **Broken Line.** A single line form that snaps, drops or stops, the number sitting at the break.
-- **Question Card.** Three words as a question, the number as the only answer offered.
+- **Broken Line.** A single line form that snaps and drops, the number sitting at the break.
+- **Hand Intervention.** A hand covering, removing, gripping or crossing out the object. Flat silhouette, never a face.
 
-Bias by pillar: P1 and P3 toward Redaction and Broken Line, P2 toward Two-State, P4 toward Object, P5 toward Question Card.
+Bias by pillar: P1 and P3 toward Redaction and Broken Line, P2 toward Two-State, P4 toward Hand Intervention, P5 toward Number Slam.
 
 ### One open loop, exactly one
 
@@ -1085,7 +1106,7 @@ The thumbnail text and the eventual video title share zero content words. The ti
 
 ### Composition
 
-Asymmetric weight, never centred. Sixteen pixel safe margin. Keep the lower right corner clear — the last 90x40 pixels carry the duration stamp. One to two degrees of rotation is permitted on the number and on nothing else.
+Asymmetric weight, never centred. Sixteen pixel safe margin. Keep the lower right corner clear — the last 90x40 pixels carry the duration stamp. Nothing rotates.
 
 ### The three tests — run all three, report all three
 
@@ -2777,7 +2798,7 @@ function renderEpisode(){
   const _b35 = list.querySelector('[data-stage="3.5"] .stage-body'); if (_b35) _b35.innerHTML = srtBody3_5(ep);
   const _b37 = list.querySelector('[data-stage="3.7"] .stage-body'); if (_b37) _b37.innerHTML = renderBody3_7(ep);
   const _b38 = list.querySelector('[data-stage="3.8"] .stage-body');
-  if (_b38){ _b38.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); txRenderPanel(); txLoadFonts(true); }
+  if (_b38){ _b38.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); txRenderPanel(); coRerender(); txLoadFonts(true).then(()=>{ coInstallPageFonts(); coPreview(); }); }
 }
 
 function toggleStage(sid){
@@ -3019,7 +3040,7 @@ function thumbClearPicks(){
 function thumbRerender(){
   const ep = activeEpisode(); if (!ep) return;
   const el = document.querySelector('[data-stage="3.8"] .stage-body');
-  if (el){ el.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); txRenderPanel(); }
+  if (el){ el.innerHTML = thumbBody3_8(ep); refreshInputStatus('3.8'); txRenderPanel(); coRerender(); }
 }
 
 
@@ -3051,6 +3072,7 @@ function txSetFonts(css, quiet){
     txRenderPanel(); return false;
   }
   TX_FONTCSS = css; TX_FONTSTATE = 'ok';
+  if (typeof coInstallPageFonts === 'function'){ coInstallPageFonts(); setTimeout(()=>{ try { coPreview(); } catch(e){} }, 60); }
   try { localStorage.setItem('mpd_fonts_b64', css); } catch(e){ /* over quota — held in memory for this session */ }
   if (!quiet) toast('✓ Fonts cached · ' + (css.length/1024).toFixed(0) + ' KB · offline from here');
   txRenderPanel(); return true;
@@ -3369,6 +3391,313 @@ function txRenderPanel(){
   txDropHandlers();
 }
 
+
+// ── Stage 3.8 · composer (v3.13.0) ──────────────────────────────────
+// Image models cannot be made to render exact typography in exact hex at an
+// exact element count; five rounds of prompt tightening bought a different
+// failure each time. So they stop trying: Gemini and ChatGPT now supply one
+// flat object with no text in it, and the type is set here — real Barlow
+// Condensed from the deployed font file, exact brand hex, text budget
+// enforced at the input. Brand fidelity by construction, not by luck.
+const CO = {
+  W: 1280, H: 720, PAD: 16,
+  ink:'#2A2520', canvas:'#E4DDD0', amber:'#F5C518', red:'#E63946',
+  teal:'#2DB89D', slate:'#8BA8B5',
+  DISP:'Barlow Condensed', MONO:'DM Mono'
+};
+// Five layouts. Question Card was dropped in v3.13 — it spent the whole text
+// budget on words and left no room for a number, and Hand Intervention
+// dominates it now that hands and silhouettes are permitted.
+const THUMB_ARCHETYPES = {
+  slam:      { label:'Number Slam',       hint:'number dominant, object bleeds off the right edge' },
+  redaction: { label:'Object + Redaction',hint:'object partly blacked out, number intact' },
+  broken:    { label:'Broken Line',       hint:'a line snaps at the number' },
+  hand:      { label:'Hand Intervention', hint:'a hand acting on the object' },
+  split:     { label:'Two-State Split',   hint:'then and now across a hairline' }
+};
+let CO_STATE = { arch:'slam', number:'', words:'', loss:false, obj:null, objW:0, objH:0, key:'magenta' };
+
+// ── text metrics ────────────────────────────────────────────────────
+// Needs the faces present in the page, not only inside the serialised SVG,
+// or measureText silently falls back to a default and every fit is wrong.
+let CO_FONTS_IN_PAGE = false;
+function coInstallPageFonts(){
+  if (CO_FONTS_IN_PAGE || !TX_FONTCSS) return;
+  const st = document.createElement('style');
+  st.id = 'mpd-embedded-fonts';
+  st.textContent = TX_FONTCSS;
+  document.head.appendChild(st);
+  CO_FONTS_IN_PAGE = true;
+  if (document.fonts && document.fonts.load){
+    ['900 100px "Barlow Condensed"','700 100px "Barlow Condensed"','500 100px "DM Mono"']
+      .forEach(f => { try { document.fonts.load(f); } catch(e){} });
+  }
+}
+let CO_MEASURE_CTX = null;
+function coMeasure(text, weight, family){
+  if (!CO_MEASURE_CTX) CO_MEASURE_CTX = document.createElement('canvas').getContext('2d');
+  CO_MEASURE_CTX.font = `${weight} 100px "${family}", sans-serif`;
+  return CO_MEASURE_CTX.measureText(text).width / 100;   // width per 1px of size
+}
+// Largest size fitting an explicit horizontal zone. Fitting against a zone
+// rather than a width means a text run can never cross into the object's
+// territory, which is what put amber type on a light silhouette in testing.
+// The 0.94 factor is deliberate slack: if the faces have not finished loading
+// when this runs, measureText reports a fallback metric and every fit is
+// slightly wrong. Slack plus the clamp below turns that into a small size
+// error instead of text running off the frame.
+function coFitZone(text, weight, family, x, maxRight, maxSize){
+  const avail = Math.max(40, (maxRight - x) * 0.94);
+  const per = coMeasure(text, weight, family) || 0.5;
+  return Math.min(maxSize, avail / per);
+}
+function coWidth(text, weight, family, size){ return coMeasure(text, weight, family) * size; }
+function coEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── object ingest · chroma key + alpha trim ─────────────────────────
+// Transparent PNG is unreliable from Gemini, so the object brief asks for a
+// flat magenta ground instead — a colour that appears nowhere in the palette
+// and nowhere in hard-edged flat artwork, which makes the key exact.
+function coKeyAndTrim(img, mode){
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  let d;
+  try { d = ctx.getImageData(0, 0, c.width, c.height); }
+  catch(e){ throw new Error('image is cross-origin and cannot be keyed'); }
+  const px = d.data;
+  if (mode !== 'alpha'){
+    for (let i = 0; i < px.length; i += 4){
+      const r = px[i], g = px[i+1], b = px[i+2];
+      let hit = false;
+      if (mode === 'magenta') hit = (r > 140 && b > 140 && g < 110 && Math.abs(r - b) < 90);
+      else if (mode === 'white') hit = (r > 236 && g > 236 && b > 236);
+      else if (mode === 'black') hit = (r < 22 && g < 22 && b < 22);
+      if (hit) px[i+3] = 0;
+    }
+    ctx.putImageData(d, 0, 0);
+  }
+  // alpha bounding box, so archetype placement is about the artwork rather
+  // than about however much empty ground the model decided to leave
+  let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+  for (let y = 0; y < c.height; y++){
+    for (let x = 0; x < c.width; x++){
+      if (px[(y * c.width + x) * 4 + 3] > 16){
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+  }
+  if (x1 < 0) throw new Error('nothing left after keying — wrong background mode?');
+  const w = x1 - x0 + 1, h = y1 - y0 + 1;
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  out.getContext('2d').drawImage(c, x0, y0, w, h, 0, 0, w, h);
+  return { url: out.toDataURL('image/png'), w, h };
+}
+
+// ── layout helpers ──────────────────────────────────────────────────
+function coObjectTag(box){
+  if (!CO_STATE.obj) return '';
+  const ar = CO_STATE.objW / CO_STATE.objH;
+  let w = box.w, h = w / ar;
+  if (box.mode === 'cover' ? h < box.h : h > box.h){ h = box.h; w = h * ar; }
+  const x = box.x + (box.anchor === 'right' ? box.w - w : box.anchor === 'center' ? (box.w - w) / 2 : 0);
+  const y = box.y + (box.valign === 'bottom' ? box.h - h : box.valign === 'top' ? 0 : (box.h - h) / 2);
+  return `<image href="${CO_STATE.obj}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" preserveAspectRatio="none"/>`;
+}
+// The signature: a fixed-weight amber rule under the number, same offset every
+// episode. Chosen over corner brackets or an episode code because it sits
+// inside the number's own footprint — it reinforces the focal point instead of
+// adding a fourth element, and at 168px it reads as a band of colour under the
+// first thing the eye lands on.
+function coRule(x, y, w){
+  return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="9" fill="${CO.amber}"/>`;
+}
+function coMark(){
+  // bottom-left: top-right collides with the bleeding object in three of the
+  // five archetypes, and the bottom-right 90x40 belongs to the duration stamp
+  return `<text x="64" y="${CO.H - 26}" font-family="${CO.MONO}, monospace" font-weight="400" font-size="15" fill="${CO.slate}" letter-spacing="1.5">MPD</text>`;
+}
+function coNumFill(){ return CO_STATE.loss ? CO.red : CO.amber; }
+
+// Each archetype declares an object zone and a text zone that do not overlap,
+// so type is always on ink and never on the silhouette. Numbers are set from
+// their baseline; the signature rule hangs a fixed distance below it.
+function coBlock(x, baseY, n, wds, nMaxRight, nMaxSize, wMaxSize, wordsAbove){
+  const nSize = coFitZone(n, 900, CO.DISP, x, nMaxRight, nMaxSize);
+  const nW    = coWidth(n, 900, CO.DISP, nSize);
+  const wSize = coFitZone(wds, 700, CO.DISP, x, nMaxRight, wMaxSize);
+  const capH  = nSize * 0.72;
+  let out = '';
+  if (wordsAbove){
+    const wy = baseY - capH - Math.max(26, nSize * 0.14);
+    out += `<text x="${x}" y="${wy.toFixed(0)}" font-family="${CO.DISP}, sans-serif" font-weight="700" font-size="${wSize.toFixed(0)}" fill="${CO.canvas}" letter-spacing="1">${coEsc(wds)}</text>`;
+  }
+  out += `<text x="${x}" y="${baseY.toFixed(0)}" font-family="${CO.DISP}, sans-serif" font-weight="900" font-size="${nSize.toFixed(0)}" fill="${coNumFill()}" letter-spacing="-2">${coEsc(n)}</text>`;
+  const ruleY = baseY + Math.max(18, nSize * 0.07);
+  out += coRule(x, ruleY, Math.min(nW, nMaxRight - x));
+  if (!wordsAbove){
+    const wy = ruleY + 9 + 26 + wSize * 0.72;
+    out += `<text x="${x}" y="${wy.toFixed(0)}" font-family="${CO.DISP}, sans-serif" font-weight="700" font-size="${wSize.toFixed(0)}" fill="${CO.canvas}" letter-spacing="1">${coEsc(wds)}</text>`;
+  }
+  return out;
+}
+
+function coBuildSVG(){
+  const n = (CO_STATE.number || '').toUpperCase();
+  const wds = (CO_STATE.words || '').toUpperCase();
+  const A = CO_STATE.arch;
+  let body = '';
+
+  if (A === 'slam'){
+    // object owns the right 46% and bleeds off that edge; type owns the left
+    body = coObjectTag({x:700, y:-40, w:640, h:800, anchor:'left', valign:'center', mode:'cover'})
+         + coBlock(64, 486, n, wds, 660, 560, 88, true);
+  }
+  else if (A === 'redaction'){
+    body = coObjectTag({x:-40, y:50, w:660, h:620, anchor:'left', valign:'center', mode:'contain'})
+         + `<rect x="0" y="392" width="612" height="104" fill="${CO.ink}"/>`
+         + coBlock(700, 330, n, wds, 1216, 420, 78, false);
+  }
+  else if (A === 'broken'){
+    // line and break occupy the left band, object sits low-left under it, and
+    // the type block owns the right half — the fault line crossed the number
+    // in the first cut, which read as damage to the type rather than to the line
+    body = coObjectTag({x:60, y:400, w:420, h:280, anchor:'left', valign:'center', mode:'contain'})
+         + `<path d="M 0 160 L 286 160" stroke="${CO.canvas}" stroke-width="10" fill="none"/>`
+         + `<path d="M 286 160 L 372 316 L 520 344" stroke="${CO.red}" stroke-width="10" fill="none"/>`
+         + `<circle cx="286" cy="160" r="15" fill="${CO.red}"/>`
+         + coBlock(640, 356, n, wds, 1216, 340, 74, false);
+  }
+  else if (A === 'hand'){
+    body = coObjectTag({x:600, y:-20, w:740, h:760, anchor:'left', valign:'center', mode:'cover'})
+         + `<text x="64" y="150" font-family="${CO.DISP}, sans-serif" font-weight="700" font-size="${coFitZone(wds,700,CO.DISP,64,600,76).toFixed(0)}" fill="${CO.canvas}" letter-spacing="1">${coEsc(wds)}</text>`
+         + coBlock(64, 604, n, '', 600, 380, 72, false).replace(/<text[^>]*font-weight="700"[\s\S]*?<\/text>/,'');
+  }
+  else { // split
+    body = coObjectTag({x:40, y:70, w:500, h:580, anchor:'center', valign:'center', mode:'contain'})
+         + `<rect x="596" y="70" width="3" height="580" fill="${CO.teal}"/>`
+         + coBlock(672, 330, n, wds, 1216, 400, 78, false);
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${CO.W}" height="${CO.H}" viewBox="0 0 ${CO.W} ${CO.H}">`
+    + `<rect x="0" y="0" width="${CO.W}" height="${CO.H}" fill="${CO.ink}"/>`
+    + body + coMark() + `</svg>`;
+}
+
+// ── budget ──────────────────────────────────────────────────────────
+function coBudget(){
+  const n = (CO_STATE.number||'').trim();
+  const w = (CO_STATE.words||'').trim();
+  const wordCount = w ? w.split(/\s+/).length : 0;
+  const chars = w.replace(/\s/g,'').length;
+  const glyphs = n.replace(/\s/g,'').length;
+  const total = wordCount + (n ? 1 : 0);
+  return { wordCount, chars, glyphs, total,
+    ok: total <= 4 && chars <= 14 && glyphs <= 6 && wordCount <= 3 && !!n };
+}
+
+// ── composer UI ─────────────────────────────────────────────────────
+function coSet(k, v){
+  CO_STATE[k] = v;
+  if (k === 'arch' || k === 'key') { coRerender(); return; }
+  coPreview();
+  const b = document.getElementById('co-budget');
+  if (b) { const g = coBudget(); b.className = 'co-budget ' + (g.ok ? 'ok' : 'bad');
+    b.textContent = `${g.total}/4 words · ${g.chars}/14 chars · ${g.glyphs}/6 glyphs`; }
+  const save = document.getElementById('co-save');
+  if (save) save.disabled = !coBudget().ok;
+}
+async function coLoadObject(file){
+  if (!file) return;
+  try {
+    const url = URL.createObjectURL(file);
+    const img = await txLoadImage(url);
+    const r = coKeyAndTrim(img, CO_STATE.key);
+    URL.revokeObjectURL(url);
+    CO_STATE.obj = r.url; CO_STATE.objW = r.w; CO_STATE.objH = r.h;
+    toast(`✓ Object keyed · ${r.w}×${r.h} after trim`);
+    coRerender();
+  } catch(e){ toast('✗ ' + e.message, 'err'); }
+}
+function coClearObject(){ CO_STATE.obj = null; coRerender(); }
+function coPreview(){
+  const host = document.getElementById('co-preview');
+  const mini = document.getElementById('co-mini');
+  if (!host) return;
+  coInstallPageFonts();
+  let svg;
+  try { svg = coBuildSVG(); } catch(e){ host.innerHTML = '<div class="co-err">' + escapeHtml(e.message) + '</div>'; return; }
+  const norm = (TX_FONTSTATE === 'ok') ? txNormaliseSVG(svg) : svg;
+  const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(norm);
+  host.innerHTML = `<img src="${src}" alt="preview" class="co-img">`;
+  if (mini) mini.innerHTML = `<img src="${src}" alt="168px" class="co-img168">`;
+}
+function coSaveToSlot(){
+  const g = coBudget();
+  if (!g.ok){ toast('Over budget — 4 words, 14 characters, 6 glyphs.','warn'); return; }
+  if (TX_FONTSTATE !== 'ok'){ toast('Fonts not loaded — the type would rasterise as serif.','err'); return; }
+  const svg = coBuildSVG();
+  TX_ITEMS.push({ name:'composed · ' + THUMB_ARCHETYPES[CO_STATE.arch].label,
+                  kind:'svg', source:svg, slot:txFreeSlot('') });
+  const it = TX_ITEMS[TX_ITEMS.length - 1];
+  txRenderItem(it).then(()=> { txRenderPanel(); toast('✓ Composed → ' + (it.slot || 'unassigned') + ' · assign a slot and save'); });
+  txRenderPanel();
+}
+function coPanelHTML(){
+  const g = coBudget();
+  const archOpts = Object.keys(THUMB_ARCHETYPES).map(k =>
+    `<option value="${k}"${k===CO_STATE.arch?' selected':''}>${THUMB_ARCHETYPES[k].label}</option>`).join('');
+  return `
+    <div class="co-grid">
+      <div class="co-form">
+        <label class="co-l">Archetype</label>
+        <select onchange="coSet('arch', this.value)">${archOpts}</select>
+        <div class="co-hint">${THUMB_ARCHETYPES[CO_STATE.arch].hint}</div>
+
+        <label class="co-l">Number <span class="co-cap">6 glyphs</span></label>
+        <input type="text" maxlength="8" value="${escapeHtml(CO_STATE.number)}" placeholder="$600K"
+               oninput="coSet('number', this.value)">
+
+        <label class="co-l">Words <span class="co-cap">3 words · 14 chars</span></label>
+        <input type="text" maxlength="20" value="${escapeHtml(CO_STATE.words)}" placeholder="STILL MISSING"
+               oninput="coSet('words', this.value)">
+
+        <label class="co-check"><input type="checkbox" ${CO_STATE.loss?'checked':''}
+          onchange="coSet('loss', this.checked)"> Number is a loss (red, not amber)</label>
+
+        <label class="co-l">Object</label>
+        <div class="co-row">
+          <select onchange="coSet('key', this.value)" title="How the object's background is removed">
+            <option value="magenta"${CO_STATE.key==='magenta'?' selected':''}>magenta key</option>
+            <option value="alpha"${CO_STATE.key==='alpha'?' selected':''}>already transparent</option>
+            <option value="white"${CO_STATE.key==='white'?' selected':''}>white key</option>
+            <option value="black"${CO_STATE.key==='black'?' selected':''}>black key</option>
+          </select>
+          <label class="btn ghost tiny" style="cursor:pointer">⬆ Load
+            <input type="file" accept="image/*" hidden onchange="coLoadObject(this.files[0]); this.value=''"></label>
+          ${CO_STATE.obj ? `<button class="btn ghost tiny" onclick="coClearObject()">✕</button>
+            <span class="co-cap">${CO_STATE.objW}×${CO_STATE.objH}</span>` : `<span class="co-cap">no object yet</span>`}
+        </div>
+
+        <div id="co-budget" class="co-budget ${g.ok?'ok':'bad'}">${g.total}/4 words · ${g.chars}/14 chars · ${g.glyphs}/6 glyphs</div>
+        <button class="btn primary" id="co-save" onclick="coSaveToSlot()" ${g.ok?'':'disabled'} style="margin-top:9px">＋ Add to candidates</button>
+      </div>
+      <div class="co-out">
+        <div id="co-preview" class="co-stage"></div>
+        <div class="co-mini-wrap"><div id="co-mini" class="co-mini"></div><span class="co-cap">168px squint</span></div>
+      </div>
+    </div>`;
+}
+function coRerender(){
+  const host = document.getElementById('co-panel');
+  if (!host) return;
+  host.innerHTML = coPanelHTML();
+  coPreview();
+}
+
 // ── Step 3 · judging payload ────────────────────────────────────────
 function buildThumbJudgePayload(){
   const ep = activeEpisode();
@@ -3424,7 +3753,7 @@ Score honestly and use the full range. If most candidates score 20 or above, the
 - **Three elements only** — one object or silhouette at 25 percent of frame or more, one number, one to three words. Plus the small MPD mark, which does not count. A fourth element is a fail.
 - **Text budget** — four words maximum including the number's unit, fourteen characters maximum of word-text, six glyphs maximum in the number.
 - **Exactly one open-loop device** — redaction bar, contradiction pair, interrupted object, or an arrow leaving the frame. Zero reads as a chart. Two reads as noise.
-- **Type** — Barlow Condensed for the number, Barlow Condensed or DM Mono for the words. A substituted typeface is a fail, and image-generated candidates fail this more often than they appear to.
+- **Type** — Barlow Condensed for the number and the words, with the amber signature rule directly under the number. Nothing rotates. Composed candidates satisfy this by construction; whole-frame candidates from Claude Design must be checked.
 - **Text fidelity** — if a generated candidate has misspelled, mangled or hallucinated any character of the number or the words, it fails outright. Read the glyphs, do not assume them.
 
 ---
@@ -3433,7 +3762,7 @@ Score honestly and use the full range. If most candidates score 20 or above, the
 
 The top three by score are the starting point, not the answer. Then apply:
 
-- **Archetype diversity is mandatory.** The three picks must use three different archetypes from: Number Slam, Two-State Split, Object plus Redaction, Broken Line, Question Card. Three variations of one idea is a wasted test. If the top three share an archetype, drop the lower-scoring duplicate and promote the next candidate that differs, and say that you did.
+- **Archetype diversity is mandatory.** The three picks must use three different archetypes from: Number Slam, Two-State Split, Object plus Redaction, Broken Line, Hand Intervention. Three variations of one idea is a wasted test. If the top three share an archetype, drop the lower-scoring duplicate and promote the next candidate that differs, and say that you did.
 - **Prefer an editable winner in v1.** Where two candidates are within two points, favour the one from a vector or code tool (Claude Design, Claude chat, Recraft) over a raster generation, because v1 is the slot most likely to need a small correction later.
 - Note which tool produced each pick. Across episodes this is the signal for which tools are worth keeping.
 
@@ -3456,7 +3785,7 @@ The top three by score are the starting point, not the answer. Then apply:
   "picks": [
     {"key": "design-1", "archetype": "Number Slam", "why": "one line"},
     {"key": "gemini-2", "archetype": "Broken Line", "why": "one line"},
-    {"key": "gpt-3", "archetype": "Question Card", "why": "one line"}
+    {"key": "gpt-3", "archetype": "Hand Intervention", "why": "one line"}
   ],
   "rating": 9
 }
@@ -3612,6 +3941,13 @@ function thumbBody3_8(ep){
       The small preview beside each row is the 168px squint check.
     </div>
     <div id="tx-panel"></div>
+    <div class="flow-step-h" style="margin-top:16px"><span class="fn">2b</span><span class="ft">Compose</span><span class="fs">Gemini and ChatGPT supply the object · Studio sets the type</span></div>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px;line-height:1.55">
+      Load the keyed object, pick an archetype, type the number and the words. The type is set in real Barlow Condensed at
+      exact brand hex and the budget is enforced here rather than hoped for, so a composed candidate cannot break G10 on
+      palette, typeface or text length. Claude Design's whole-frame candidates skip this and go straight through the exporter above.
+    </p>
+    <div id="co-panel"></div>
     <div class="sn-bar">
       <span class="sn-lead">Save-as<span class="sn-note">Design's three are named by the exporter</span></span>
       ${THUMB_TOOLS.filter(t => t !== 'design').map(t => `<span class="sn-grp">${[1,2,3].map(i =>
@@ -4042,6 +4378,50 @@ function resetEpisode(){
 // ════════════════════════════════════════════════════════════════════
 
 // ── Stage 3.8 · per-tool payload variants (v3.10.0) ──────────────────
+// Shared operator protocol for the image models. Both payloads used to be
+// written as briefs for a prompt-writing model and ended with "produce three
+// prompts" — but Ali pastes them straight into the image tool, which then
+// improvised and returned two photorealistic movie posters for EP002. This is
+// addressed to the generator itself, counts its own output, and puts the hard
+// bans before the creative brief rather than after it.
+const THUMB_PROTOCOL = [
+'### What you are making',
+'',
+'One flat vector object per image. Not a thumbnail, not a poster, not a scene, not a composition. A single illustrated object on a plain background, the way an icon or a pictogram is drawn.',
+'',
+'**There is no text in the image. None.** No words, no numbers, no letters, no labels on any part of the object, no captions, no signatures, no watermark. Typography is added afterwards by another system and any text you draw has to be thrown away, which wastes the whole generation. If the concept seems to need a label, it does not \u2014 draw the object and stop.',
+'',
+'### The background',
+'',
+'Flat, solid, pure magenta, hex FF00FF, edge to edge. Nothing else on it. No gradient, no vignette, no shadow cast onto it, no floor, no horizon, no table, no room. The magenta is removed automatically afterwards, which is why it must be flat and why nothing may share its colour.',
+'',
+'Leave clear space on all four sides. Do not let the object touch the edge of the frame.',
+'',
+'### How the object is drawn',
+'',
+'- Flat vector illustration. Hard edges. Solid fills. The look of a printed pictogram or a transit sign, not a photograph of a thing.',
+'- Two to four solid colours in the object at most. Choose from warm off-white E4DDD0, slate blue-grey 8BA8B5, strong red E63946, and near-black 2A2520. No other colours anywhere.',
+'- No gradients, no shading, no highlights, no drop shadows, no reflections, no ambient occlusion, no glow, no outline stroke unless it is part of the drawing.',
+'- No texture, no grain, no noise, no grunge, no distress, no scratches, no paper fibre, no wood grain, no brush marks.',
+'- No photorealism, no 3D rendering, no depth of field, no lens effects, no smoke, no dust, no embers, no sparks.',
+'- No logos, no brand marks, no user interface, no charts, no graphs.',
+'- Silhouettes and hands are allowed and often the strongest choice. A hand covering, removing, gripping or crossing out the object reads as human presence without a face. Draw hands as flat silhouettes, never photographic, and never include a face, a head or a full body.',
+'',
+'### Composition of the object itself',
+'',
+'The object should be readable as a single shape at very small size. One recognisable silhouette, centred, filling most of the clear area. If a viewer could not name the object from its outline alone at the size of a postage stamp, simplify it until they could.',
+'',
+'### What a failed attempt looks like',
+'',
+'A dramatic dark scene containing a rendered three-dimensional object with words written across its parts, a caption, a callout box, an arrow, and a small chart, sitting on a textured floor under moody lighting. Every element of that is wrong here. What is wanted instead is the single object from that scene, drawn flat, unlabelled, alone on magenta.',
+'',
+'### Print this line before each image, then generate',
+'',
+'OBJECT n of 3 \u2014 subject: [one thing] \u2014 colours: [2 to 4 from the list] \u2014 background: flat magenta \u2014 text in image: none \u2014 photoreal: no \u2014 faces: no',
+'',
+'If the concept cannot be drawn without text, say so plainly and propose a different object rather than generating one with words in it.'
+].join('\n');
+
 // One payload cannot serve every tool. Claude Design WRITES CODE, so its
 // payload wants exact hex, font stacks and frame geometry. Gemini and ChatGPT
 // GENERATE IMAGES, so theirs wants art direction in plain language, literal
@@ -4063,6 +4443,10 @@ You are producing an editable design on a canvas, not a description of one. Buil
 - Build every object from vector primitives. No raster imagery, no gradients, no drop shadows, no bevels, no glow. Flat fills and hard edges only.
 - Set the number's cap height between 45 and 62 percent of frame height depending on archetype.
 - **Each candidate is one element sized exactly 1280px by 720px inline**, carrying a data-screen-label attribute naming its archetype, for example data-screen-label="A · Redaction". Claude Design has no PNG export; Studio reads those frames out of the standalone HTML and rasterises them, and it matches on the exact pixel dimensions.
+- **Palette hierarchy.** Ink 2A2520 ground. The number in amber F5C518, or red E63946 when it represents a loss. Words in canvas E4DDD0. Objects in canvas, slate 8BA8B5 or red. Teal 2DB89D is structural only, hairlines and rules, never a subject colour.
+- **The signature rule.** Every candidate carries a nine pixel amber bar directly under the number, starting at the number's left edge and running its width. Same weight, same offset, every episode. It is what makes a thumbnail recognisably ours in a feed and it does not count as a fourth element.
+- **No rotation.** Type sits square. Tilted headlines read as dated clickbait.
+- **Hands and silhouettes are allowed** and are the strongest available substitute for a face on a faceless channel. Flat silhouette only, no photographic hands, and never a face, head or full body.
 - **Inline styles only, and no images.** Every rule lives in a style attribute on the element that needs it. No stylesheet rules, no class selectors, no img elements, no CSS background-image, no external URLs. Anything that depends on a stylesheet or a remote file will not survive the export.
 - Do not wrap a candidate in a scaled or transformed container. Contact-sheet previews elsewhere on the canvas may be scaled; the three full-size frames may not.
 - Deliver via Export in the upper right, Export as standalone HTML, then drop that .html into Studio's exporter under step 2. Keep the Design project itself as the editable source.
@@ -4070,8 +4454,8 @@ You are producing an editable design on a canvas, not a description of one. Buil
   },
   gemini: {
     label: 'Gemini',
-    sub: 'image gen · art direction',
-    note: 'Strongest at flat editorial illustration. Weakest at exact in-image text, so the text constraint is stated twice.',
+    sub: 'objects only · type set by Studio',
+    note: 'Supplies the flat object. Never the text — that is set in step 2b, where the palette and budget cannot be broken.',
     plans: {
       free: `### Plan · free tier
 
@@ -4080,34 +4464,39 @@ On the free tier Gemini will often answer a picture request with a description i
 - Open with a bare instruction: **Generate an image.** Not "can you", not "I would like". A question gets answered in words.
 - Add: do not describe the image, do not explain your reasoning, do not ask clarifying questions. Return the image only.
 - Ask for the highest quality and largest size available on this account, 16:9.
-- One image per message and one message per archetype. Batched requests on the free tier degrade every image in the batch.
+- One image per message, three messages, same chat. The three-image mandate still holds. Do not ask for all three in one message, which degrades every image in the batch, and do not start a new chat between them, which loses the constraints.
 - If it returns text instead of a picture, do not rephrase the brief. Reply with exactly: Generate the image now. Re-explaining restarts the negotiation.
+- If it stops after one or two, reply with exactly: Continue. Generate object 2 of 3. Do not restate the brief.
 - If the text inside the image comes out mangled, regenerate rather than repair. Free-tier edit passes rewrite the whole composition and usually make it worse.
-- Expect roughly one usable result in three. Generate five per archetype and keep the best.`,
+- Expect roughly one usable result in three. Generate five per archetype and keep the best. Objects are far easier for a free tier than a full thumbnail was, so the hit rate should be better than it was on EP002.`,
       pro: `### Plan · paid tier
 
 On a paid tier ask for the strongest image model on the account and use the headroom:
 
-- Request four variations of the archetype in one go, then pick, rather than one image at a time.
+- Three archetypes, and within each you may request several variations and pick. Variations of one archetype do not count toward the three.
 - Ask explicitly for maximum resolution and 16:9. Upscale after selection, never before.
 - Iterate on a winner with targeted edits: keep the composition, change only the named element. Paid-tier edit passes hold the rest of the frame steady.
-- Text fidelity is still the failure mode. Verify every glyph of the number against the brief before the candidate goes forward.`
+- There is no text to get wrong here any more. Judge on silhouette clarity instead: does the object read as one shape at postage-stamp size.`
     },
-    sop: `### Tool · Gemini image generation
+    sop: `### Tool · Gemini · object brief
 
-Write the request as art direction in plain language, not as a spec sheet. Image models ignore hex codes, so name the colour and give the hex only as a parenthetical.
+You are the image generator. You are producing source artwork, not finished thumbnails. Read all of this before generating anything.
 
-- Open with the composition in one sentence, then the subject, then the type.
-- State the text literally and in quotes once, giving the exact number and the exact words. Repeat it once at the end as a constraint line. Text drift is the dominant failure mode with this tool.
-- Describe the ground as a very dark warm near-black, the number as a saturated golden yellow, the words as a warm off-white.
-- Say: flat vector illustration, hard edges. Ban: gradient, photorealism, glow, lens flare, 3D render, watermark, any additional text.
-- Ask for 16:9 and upscale to 1280x720 afterwards rather than asking for pixel dimensions.
-- Produce three separate prompts, one per archetype, each fully self-contained. Never ask for three images in one prompt.`
+**Produce exactly THREE images in this session, one object per archetype below.** After each, print OBJECT n OF 3 COMPLETE. Do not stop at one. Do not stop at two. If you have printed fewer than three completion lines, you are not finished.
+
+${THUMB_PROTOCOL}
+
+### Gemini specifics
+
+- Do not narrate, do not explain, do not ask a clarifying question. Generate.
+- Aspect does not matter here. The object is cut out and repositioned afterwards, so square is fine.
+- Gemini drifts back toward photorealism within a few turns. Restate flat vector, hard edges, solid fills, flat magenta background at the top of every one of the three generations.
+- Gemini has a strong habit of writing labels onto objects. If any text appears in the output, regenerate rather than editing, and add: absolutely no text, letters or numbers anywhere in the image.`,
   },
   gpt: {
     label: 'ChatGPT',
-    sub: 'image gen · text-reliable',
-    note: 'Most reliable in-image typography of the image models. Follows positional layout language well; degrades on long prompts.',
+    sub: 'objects only · type set by Studio',
+    note: 'Supplies the flat object. Cleanest silhouettes of the two; can often return a transparent background directly.',
     plans: {
       free: `### Plan · free tier
 
@@ -4115,27 +4504,32 @@ The free tier caps image generations per day, downgrades the model once the cap 
 
 - Open with a bare instruction: **Generate an image.** Then the brief. A polite question gets a paragraph back.
 - Add: return only the image, no commentary, no clarifying questions.
-- One archetype per message and a fresh chat per archetype. A long thread on the free tier degrades text rendering sharply.
-- Keep the prompt under 120 words. Free-tier text fidelity falls off fast with prompt length, and the number is the one thing that cannot be wrong.
+- One archetype per message, three messages, same chat. All three still get produced. A fresh chat per archetype loses the constraints and is how EP002 ended up with two mismatched candidates.
+- If it stops after one or two, reply with exactly: Continue. Generate object 2 of 3. Do not restate the brief, which invites reinterpretation.
 - Ask for 16:9. If it refuses the aspect ratio, accept square and let Studio's exporter crop it — do not fight it and burn a generation.
-- Budget the daily cap: three archetypes at two attempts each. Spend the attempts on the archetype whose text is rendering cleanest.`,
+- Budget the daily cap: three objects at two attempts each. Spend spare attempts on the object reading least clearly as a silhouette.
+- If the cap is hit before three archetypes exist, save what you have and finish the rest tomorrow. Two candidates from one tool is a broken A/B set, not a shortcut.`,
       pro: `### Plan · paid tier
 
 - Ask for the highest-fidelity image model on the account, 16:9, maximum resolution.
-- Generate two variations per archetype and choose, rather than accepting the first.
+- Three archetypes, two variations within each, choose one per archetype. Variations do not count toward the three.
 - Use targeted edits on a winner: name the single element to change and instruct that everything else stays fixed.
 - Longer prompts are safe here, but keep the quoted text block short and isolated at the end — that is what protects glyph accuracy.`
     },
-    sop: `### Tool · ChatGPT image generation
+    sop: `### Tool · ChatGPT · object brief
 
-Same three archetypes, phrased for a model that renders in-image text reliably and follows layout instructions positionally.
+You are the image generator. You are producing source artwork, not finished thumbnails. Read all of this before generating anything.
 
-- Lead with the canvas: a 16:9 poster on a very dark warm near-black background.
-- Describe placement in explicit regions — left third, centre, lower right — rather than percentages.
-- Quote the exact text once, then close with a line reading: the image must contain exactly this text and nothing else.
-- Ban gradients, glows, photorealism, drop shadows, borders, watermarks, additional words, additional numbers, and faces.
-- Ask for flat editorial vector poster styling with heavy condensed sans type.
-- Produce three separate prompts and keep each under 150 words. Longer prompts measurably degrade text fidelity here.`
+**Produce exactly THREE images in this session, one object per archetype below.** After each, print OBJECT n OF 3 COMPLETE. Do not stop at one. Do not stop at two. If you have printed fewer than three completion lines, you are not finished.
+
+${THUMB_PROTOCOL}
+
+### ChatGPT specifics
+
+- Do not narrate, do not explain, do not ask a clarifying question. Generate.
+- Aspect does not matter here. The object is cut out and repositioned afterwards, so square is fine.
+- If the tool offers a transparent background, use it and say so, and skip the magenta. Otherwise flat magenta.
+- Keep each prompt short. A long prompt pulls this model back toward scene-building, and a scene is not what is wanted.`,
   }
 };
 const THUMB_TOOLS = ['design','gemini','gpt'];
@@ -4143,6 +4537,8 @@ const THUMB_TOOLS = ['design','gemini','gpt'];
 // candidate worth testing, and a tool that never wins a slot is only diluting
 // the comparison. Three tools, nine samples, three picks.
 const THUMB_PLANS = { free:'Free plan', pro:'Pro / paid' };
+
+
 const THUMB_ICON  = { design:'✧', gemini:'✦', gpt:'✱' };
 function thumbSampleCount(){ return THUMB_TOOLS.length * 3; }
 const THUMB_CRIT = [
@@ -4334,7 +4730,7 @@ async function buildPayload(sid, variant){
       G7:'Asset manifest complete (NEW vs REUSE labelled) · country panels required if topic implies international comparison',
       G8:'A+V sync ≤50ms · loudness preserved · trim-to-shortest applied · 0s offset · replace audio mode',
       G9:'Final master loudness −14 LUFS · −1 dBTP · no audible MP3 compression artifacts',
-      G10:'Ink ground · 3 elements (one object ≥25% frame + one number + 1–3 words) · text budget 4 words / 14 chars / 6 glyphs · exactly one open-loop device · legible at 168×94 · survives grayscale · 3 candidates on 3 different archetypes',
+      G10:'Ink ground · 3 elements (one object ≥25% frame + one number + 1–3 words) · text budget 4 words / 14 chars / 6 glyphs · amber signature rule under the number · teal structural only · no rotation · no faces (hands and silhouettes allowed) · exactly one open-loop device · legible at 168×94 · survives grayscale · 3 candidates on 3 different archetypes',
       G11:'Title ≤60 chars · keyword in first 20 chars · curiosity gap not clickbait · description first 2 lines = search snippet · 5–8 tags · chapter timestamps',
       G12:'No blocklist phrasings: delve · dive into · in today\'s world · game-changer · revolutionary · tapestry · realm · landscape (as metaphor) · "smash that like button" · "they don\'t want you to know"',
     };
