@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MPD Studio · v3.17.0</title>
+<title>MPD Studio · v3.18.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&family=Barlow:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -382,6 +382,21 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 .tf-badge{font-family:var(--font-mono);font-size:9px;padding:3px 6px;border-radius:5px;flex:0 0 auto}
 .tf-badge.ok{color:var(--teal-deep);background:#2DB89D1F}
 .tf-badge.bad{color:var(--red,#E63946);background:#E639461A}
+.tv-empty{font-size:12px;color:var(--ink-soft);font-style:italic}
+.tf-arch-r{font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);flex:0 0 auto}
+.tf-txt{font-size:12.5px;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tf-txt b{font-family:var(--font-display);font-weight:900;font-size:14px}
+.tf-loss-r{font-family:var(--font-mono);font-size:9px;color:var(--red,#E63946);flex:0 0 auto}
+.tf-sub{font-size:12px;color:var(--ink);opacity:.85;padding-left:20px}
+.tf-src{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-soft);padding-left:20px;margin-top:2px}
+.tp-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--hairline)}
+.tp-row:first-of-type{border-top:0}
+.tp-l{flex:1 1 auto;min-width:0;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tp-tips{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px}
+.tp-tips .tp-tip{flex:1 1 260px;font-size:11.5px;color:var(--ink-soft);line-height:1.5}
+.tp-tips .tp-tip b{color:var(--ink);font-size:12px}
+.tp-tips ul{margin:4px 0 0;padding-left:16px}
+.tp-tips li{margin-bottom:3px}
 /* composer (v3.13.0) */
 .co-grid{display:grid;grid-template-columns:minmax(210px,1fr) minmax(240px,1.35fr);gap:14px;margin-top:8px}
 @media(max-width:720px){.co-grid{grid-template-columns:1fr}}
@@ -410,7 +425,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 <aside class="side">
   <div class="brand">
     MPD<br>Studio
-    <small id="app-ver">v3.17.0 · single-file · cloud-synced</small>
+    <small id="app-ver">v3.18.0 · single-file · cloud-synced</small>
   </div>
 
   <nav class="navlist" id="nav">
@@ -960,7 +975,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 // ════════════════════════════════════════════════════════════════════
 //  STATE SCHEMA + SEED
 // ════════════════════════════════════════════════════════════════════
-const APP_VERSION = '3.17.0';
+const APP_VERSION = '3.18.0';
 // Infrastructure contract versions Stage 3.6 depends on. Bump alongside any
 // change to the episode.json shape or the shell validator, and the payload's
 // preflight expectation moves with it automatically.
@@ -3019,10 +3034,11 @@ function thumbState(ep){
   while (st.thumb.subjects.length < 3) st.thumb.subjects.push('');
   return st.thumb;
 }
-// One prompt has to carry everything the image will contain, so the text is
-// typed here rather than left to the model. The number especially: every
-// figure on a thumbnail comes from the 3.1 brief, and an image model choosing
-// its own statistic is how a wrong number reaches a published frame.
+// One prompt has to carry everything the image will contain. Typing that by
+// hand was the wrong job for a person and inventing it was the wrong job for
+// an image model: Claude reads the 3.1 brief, so Claude writes the concepts
+// and Studio parses them out of the returned HTML. Every figure carries a
+// figure_source back to the chapter it came from.
 const THUMB_FRAME_DEFAULTS = ['slam','redaction','hand'];
 function thumbFrames(ep){
   const t = thumbState(ep);
@@ -3043,6 +3059,71 @@ function thumbSetFrame(ix, k, v){
   f[k] = (k === 'loss') ? !!v : String(v || '').trim();
   markDirty();
   if (k !== 'arch') thumbBudgetBadge(ix);
+}
+// ── concepts HTML ingest ────────────────────────────────────────────
+// Claude returns one file carrying both halves: three rendered 1280x720
+// frames for the exporter, and a JSON block Studio turns into the image
+// prompts. Same three concepts drive all three tools, so the nine candidates
+// are nine executions of three ideas rather than nine unrelated pictures.
+function thumbConceptIssues(f){
+  const out = [];
+  if (!f.number)  out.push('no number');
+  if (!f.words)   out.push('no words');
+  if (!f.subject) out.push('no subject');
+  if (!f.figureSource) out.push('no figure source');
+  const g = thumbBudget(f);
+  if (f.number && !g.ok) out.push('over budget ' + g.glyphs + '/6 ' + g.wordCount + '/3 ' + g.chars + '/14');
+  return out;
+}
+function thumbIngestConcepts(html, fname){
+  const ep = activeEpisode(); if (!ep) return false;
+  let doc; try { doc = new DOMParser().parseFromString(html, 'text/html'); }
+  catch(e){ toast('\u2717 could not parse that file \u2014 ' + e.message, 'err'); return false; }
+  const tag = doc.getElementById('mpd-thumb-concepts');
+  if (!tag){ toast('\u2717 no #mpd-thumb-concepts block in that file \u2014 is it the concepts HTML?', 'err'); return false; }
+  let data; try { data = JSON.parse(tag.textContent || ''); }
+  catch(e){ toast('\u2717 concepts block is not valid JSON \u2014 ' + e.message, 'err'); return false; }
+  const list = Array.isArray(data) ? data : (data.concepts || []);
+  if (list.length !== 3){ toast('\u2717 expected 3 concepts, found ' + list.length, 'err'); return false; }
+  const frames = list.slice(0,3).map(c => ({
+    arch: THUMB_ARCHETYPES[c.archetype] ? c.archetype : 'slam',
+    number: String(c.number || '').trim(),
+    words:  String(c.words  || '').trim(),
+    subject:String(c.subject|| '').trim(),
+    loss:   !!c.loss,
+    figureSource: String(c.figure_source || c.figureSource || '').trim()
+  }));
+  const problems = [];
+  frames.forEach((f, i) => thumbConceptIssues(f).forEach(p => problems.push('concept ' + (i+1) + ' ' + p)));
+  const archs = new Set(frames.map(f => f.arch));
+  if (archs.size < 3) problems.push('archetypes repeat \u2014 the A/B test needs three different ones');
+  const t = thumbState(ep);
+  t.frames = frames;
+  t.conceptsFile = String(fname || '');
+  t.conceptsAt = new Date().toISOString();
+  markDirty(); renderAll();
+  toast(problems.length ? '\u26a0 3 concepts loaded \u00b7 ' + problems.join(' \u00b7 ')
+                        : '\u2713 3 concepts loaded from ' + (fname || 'file'),
+        problems.length ? 'warn' : 'ok');
+  return true;
+}
+async function thumbLoadConceptsFile(input){
+  const f = input && input.files && input.files[0]; if (!f) return;
+  try {
+    const txt = await f.text();
+    if (thumbIngestConcepts(txt, f.name)) await txAddFiles([f]);
+  } catch(e){ toast('\u2717 ' + e.message, 'err'); }
+  input.value = '';
+}
+function thumbCopyPrompt(ix){
+  const ep = activeEpisode(); if (!ep) return;
+  const f = thumbFrames(ep)[ix]; if (!f) return;
+  const txt = thumbFramePrompt(f);
+  navigator.clipboard.writeText(txt).then(
+    () => toast('\u29c9 prompt ' + (ix+1) + ' copied \u00b7 paste into Gemini, then into ChatGPT'),
+    () => { const ta = document.createElement('textarea'); ta.value = txt;
+            document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+            toast('\u29c9 prompt ' + (ix+1) + ' copied'); });
 }
 // Same budget the composer enforces: at most four elements, three words,
 // fourteen characters of words, six glyphs of number.
@@ -3965,33 +4046,41 @@ function thumbBody3_8(ep){
   }).join('');
 
   const frames = thumbFrames(ep);
-  const readyFrames = frames.filter(f => thumbBudget(f).ok && (f.subject||'').trim()).length;
-  const phSub = ['a piggy bank sawn cleanly in half','a hand lifting one coin off a stack of ten','a payslip torn across the middle'];
-  const phNum = ['10%','$1.2M','38'];
-  const phWds = ['ISN\'T ENOUGH','THE REAL GAP','WHO PAID'];
-  const subjectPanel = `<div class="tv-subj">
-    <div class="tv-subj-h"><b>Thumbnail specs</b><span>${readyFrames}/3 ready · lettered verbatim into the ${THUMB_TOOLS.filter(t=>t!=='design').map(t=>THUMB_VARIANTS[t].label).join(' and ')} prompts</span></div>
-    ${frames.map((f, i) => {
-      const g = thumbBudget(f);
-      return `<div class="tf-row">
-        <div class="tf-top">
-          <span class="tv-subj-n">${i+1}</span>
-          <select class="tf-arch" onchange="thumbSetFrame(${i},'arch',this.value)">
-            ${Object.keys(THUMB_ARCHETYPES).map(k => `<option value="${k}"${k===f.arch?' selected':''}>${THUMB_ARCHETYPES[k].label}</option>`).join('')}
-          </select>
-          <input class="tv-subj-i tf-num" type="text" spellcheck="false" value="${escapeHtml(f.number||'')}"
-            placeholder="${phNum[i]}" title="the number — from the 3.1 brief only" onchange="thumbSetFrame(${i},'number',this.value)">
-          <input class="tv-subj-i tf-wds" type="text" spellcheck="false" value="${escapeHtml(f.words||'')}"
-            placeholder="${phWds[i]}" title="up to three words" onchange="thumbSetFrame(${i},'words',this.value)">
-          <label class="tf-loss" title="number in red — use when the figure is a loss"><input type="checkbox"${f.loss?' checked':''} onchange="thumbSetFrame(${i},'loss',this.checked)"> loss</label>
-          <span class="tf-badge ${g.ok?'ok':'bad'}" id="tf-b${i}">${g.glyphs}/6 · ${g.wordCount}/3 · ${g.chars}/14${(f.number||'').trim()?'':' · no number'}</span>
-        </div>
-        <input class="tv-subj-i" type="text" spellcheck="false" value="${escapeHtml(f.subject||'')}"
-          placeholder="${phSub[i]}" onchange="thumbSetFrame(${i},'subject',this.value)">
+  const t8 = thumbState(ep);
+  const loaded = !!t8.conceptsAt;
+  const ready = frames.filter(f => !thumbConceptIssues(f).length).length;
+  const ARCHL = k => (THUMB_ARCHETYPES[k] && THUMB_ARCHETYPES[k].label) || k;
+
+  const conceptPanel = !loaded
+    ? `<div class="tv-subj tv-empty">No concepts loaded yet. Step 2 produces the HTML; drop it above and the three prompts appear.</div>`
+    : `<div class="tv-subj">
+        <div class="tv-subj-h"><b>Three concepts</b><span>${ready}/3 clean \u00b7 ${escapeHtml(t8.conceptsFile||'loaded')}</span></div>
+        ${frames.map((f, i) => {
+          const iss = thumbConceptIssues(f);
+          return `<div class="tf-row">
+            <div class="tf-top">
+              <span class="tv-subj-n">${i+1}</span>
+              <span class="tf-arch-r">${ARCHL(f.arch)}</span>
+              <span class="tf-txt"><b>${escapeHtml(f.number||'—')}</b> ${escapeHtml(f.words||'')}</span>
+              ${f.loss ? '<span class="tf-loss-r">loss</span>' : ''}
+              <span class="tf-badge ${iss.length?'bad':'ok'}">${iss.length ? escapeHtml(iss.join(' \u00b7 ')) : 'clean'}</span>
+            </div>
+            <div class="tf-sub">${escapeHtml(f.subject||'no subject')}</div>
+            ${f.figureSource ? `<div class="tf-src">figure \u00b7 ${escapeHtml(f.figureSource)}</div>` : ''}
+          </div>`;
+        }).join('')}
+        <div class="tv-subj-f">Parsed from the concepts HTML \u2014 not editable here on purpose. A wrong number or a weak subject is fixed in the Claude chat and the file reloaded, so the frames and the prompts never drift apart.</div>
       </div>`;
-    }).join('')}
-    <div class="tv-subj-f">Everything the image will contain is set here, because one prompt has to carry all of it. <b>The number comes from the 3.1 brief and nowhere else</b> — leave it blank and the payload tells the tool to say so rather than invent one. Budget is the same as the composer's: 6 glyphs of number, 3 words, 14 characters. Three different archetypes across the three keeps the A/B test honest.</div>
-  </div>`;
+
+  const promptRows = !loaded ? '' : frames.map((f, i) => {
+    const p = thumbFramePrompt(f);
+    return `<div class="tp-row">
+      <span class="tv-subj-n">${i+1}</span>
+      <span class="tp-l">${ARCHL(f.arch)} \u00b7 <b>${escapeHtml(f.number||'—')}</b> ${escapeHtml(f.words||'')}</span>
+      ${p ? `<button class="btn primary tiny" onclick="thumbCopyPrompt(${i})">\u29c9 Copy prompt ${i+1}</button>`
+          : `<span class="tf-badge bad">incomplete \u2014 fix in the concepts file</span>`}
+    </div>`;
+  }).join('');
 
   const opts = key => thumbAllKeys().map(k =>
     `<option value="${k}"${k===key?' selected':''}>${thumbKeyLabel(k)}${t.scores[k]?' · '+thumbRowTotal(t,k)+'/25':''}</option>`).join('');
@@ -4018,41 +4107,42 @@ function thumbBody3_8(ep){
     </div>
     <div style="font-size:12.5px;line-height:1.55;color:var(--ink-soft)">
       Every number on a thumbnail comes from the 3.1 brief and nowhere else — never the caption transcript, never rounded for effect.
-      Asset registry: <b>${assetCount}</b> entr${assetCount === 1 ? 'y' : 'ies'}, inlined into the Claude Design payload for reuse. The two image payloads carry no brief, no gates and no registry by design — only the specs you set below.
+      Asset registry: <b>${assetCount}</b> entr${assetCount === 1 ? 'y' : 'ies'}, inlined into the concepts payload for reuse. Gemini and ChatGPT never see the brief at all — they receive one paragraph per concept and nothing else.
       Ground is <b>Ink #2A2520</b> from v3.10 — figures in Canvas and Amber.
     </div>
     <div class="payload-actions"><button class="btn ghost tiny" onclick="refreshInputStatus('3.8')" title="Re-scan workspace">↻ Refresh inputs</button></div>
 
-    <div class="flow-step-h"><span class="fn">2</span><span class="ft">${THUMB_TOOLS.length} payloads, ${THUMB_TOOLS.length} tools</span><span class="fs">3 candidates each · ${thumbSampleCount()} samples total</span></div>
-    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px;line-height:1.55">Each payload is written for how that tool actually takes direction. <b>Claude Design writes code</b>, so it gets the full brief, exact hex and frame geometry, and returns three whole candidates. <b>Gemini and ChatGPT generate images</b>, so they get no brief at all — a short preamble and three self-contained prompts, one finished 1280×720 candidate each, using the specs below verbatim.</p>
-    ${subjectPanel}
+    <div class="flow-step-h"><span class="fn">2</span><span class="ft">Concepts payload</span><span class="fs">one Claude chat \u00b7 returns the concepts HTML</span></div>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px;line-height:1.55">Claude reads the brief, so Claude writes the concepts \u2014 archetype, number, words and drawable subject for each of three ideas \u2014 and returns one HTML file carrying three finished frames plus a machine-readable concept block. Every figure carries the chapter it came from. <b>Opus</b>, fresh chat.</p>
     <div class="tv-grid">${cards}</div>
-    <div style="font-size:12px;color:var(--ink-soft);margin:14px 0 4px;line-height:1.55">
-      <b>Export.</b> Mainly for Claude Design, which has no PNG export — drop its standalone HTML here and Studio reads the
-      1280×720 frames straight out of it and writes one PNG each. Recraft's SVG works the same way.
-      Gemini and ChatGPT return finished frames at whatever size they feel like, so run them through here for the exact 1280×720 crop and the slot naming.
-      Fonts are embedded before rasterising; without them a vector frame silently renders as serif.
-      The small preview beside each row is the 168px squint check.
+
+    <div class="flow-step-h"><span class="fn">3</span><span class="ft">Load the concepts HTML</span><span class="fs">fills the prompts \u00b7 rasterises Design's three</span></div>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;line-height:1.55">One file does both jobs. Studio reads the concept block to build the image prompts, and the three <code>data-screen-label</code> frames go straight into the exporter below for PNG. Fonts are embedded before rasterising; without them a vector frame silently renders as serif.</p>
+    <div class="row" style="gap:8px;align-items:center;margin-bottom:10px">
+      <label class="btn primary tiny" style="cursor:pointer">\u2191 Load concepts HTML
+        <input type="file" accept=".html,.htm" style="display:none" onchange="thumbLoadConceptsFile(this)">
+      </label>
+      ${loaded ? `<span class="mono" style="font-size:10px;color:var(--ink-soft)">loaded ${escapeHtml(String(t8.conceptsAt).slice(0,16).replace('T',' '))}</span>` : ''}
     </div>
+    ${conceptPanel}
     <div id="tx-panel"></div>
-    <div class="flow-step-h" style="margin-top:16px"><span class="fn">2b</span><span class="ft">Compose</span><span class="fs">optional · build a candidate from a drawn object</span></div>
-    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px;line-height:1.55">
-      <b>Skip this unless you need it.</b> All three tools return whole candidates now, so the normal route is step 2 straight
-      into the exporter. Use the composer when you have an <i>object</i> rather than a thumbnail — a hand, a silhouette, an
-      illustration lifted from the asset library or drawn anywhere else. It keys the background out,
-      places the object per archetype, and sets the type in real Barlow Condensed at exact brand hex with the budget enforced
-      at the input. A composed candidate cannot break G10 on palette, typeface, rotation or text length.
-    </p>
-    <div id="co-panel"></div>
+
+    <div class="flow-step-h"><span class="fn">4</span><span class="ft">Render the three, twice</span><span class="fs">same concepts \u00b7 Gemini and ChatGPT</span></div>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;line-height:1.55">Each prompt is one paragraph and nothing else. Paste one per message into Gemini, wait for the image, then the next; then the same three into ChatGPT. Three concepts \u00d7 three tools = <b>${thumbSampleCount()}</b> candidates, so the comparison is nine executions of three ideas rather than nine unrelated pictures. Run the images back through the exporter above for the exact 1280\u00d7720 crop.</p>
+    ${promptRows || '<div class="tv-subj tv-empty">Load the concepts HTML in step 3 and the prompts appear here.</div>'}
+    ${loaded ? `<div class="tp-tips">${THUMB_TOOLS.filter(x => THUMB_VARIANTS[x].renders).map(x =>
+      `<div class="tp-tip"><b>${THUMB_VARIANTS[x].label}</b><ul>${(THUMB_VARIANTS[x].tips||[]).map(li => `<li>${li}</li>`).join('')}</ul></div>`).join('')}</div>` : ''}
+
+    <div class="flow-step-h"><span class="fn">5</span><span class="ft">Save the ${thumbSampleCount()}</span><span class="fs">candidate filenames for the judging chat</span></div>
     <div class="sn-bar">
       <span class="sn-lead">Save-as<span class="sn-note">Design's three are named by the exporter</span></span>
-      ${THUMB_TOOLS.filter(t => t !== 'design').map(t => `<span class="sn-grp">${[1,2,3].map(i =>
-        `<button class="sn-tile" onclick="thumbCopySample('${t}-${i}')" title="copy ${t}-${i}.png">`
-        + `<span class="sn-ic">${THUMB_ICON[t] || '•'}</span><span class="sn-n">${i}</span></button>`).join('')}</span>`).join('')}
-      <span class="sn-key">${THUMB_TOOLS.filter(t => t !== 'design').map(t => `${THUMB_ICON[t]} ${THUMB_VARIANTS[t].label}`).join(' · ')}</span>
+      ${THUMB_TOOLS.map(t2 => `<span class="sn-grp">${[1,2,3].map(i =>
+        `<button class="sn-tile" onclick="thumbCopySample('${t2}-${i}')" title="copy ${t2}-${i}.png">`
+        + `<span class="sn-ic">${THUMB_ICON[t2] || '\u2022'}</span><span class="sn-n">${i}</span></button>`).join('')}</span>`).join('')}
+      <span class="sn-key">${THUMB_TOOLS.map(t2 => `${THUMB_ICON[t2]} ${THUMB_VARIANTS[t2].label}`).join(' \u00b7 ')}</span>
     </div>
 
-    <div class="flow-step-h"><span class="fn">3</span><span class="ft">Claude judges the ${thumbSampleCount()}</span><span class="fs">attach the PNGs · paste the JSON tail back</span></div>
+    <div class="flow-step-h"><span class="fn">6</span><span class="ft">Claude judges    <div class="flow-step-h"><span class="fn">3</span><span class="ft">Claude judges the ${thumbSampleCount()}</span><span class="fs">attach the PNGs · paste the JSON tail back</span></div>
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px">Rename the candidates to the sample filenames above, attach them to a fresh <b>Opus</b> chat with this payload, and paste the returned JSON tail below. It scores all ${thumbSampleCount()} against the rubric, enforces archetype diversity across the picks, and fills v1/v2/v3.</p>
     <div class="payload-actions">
       <button class="btn primary" onclick="copyThumbJudge()">📋 Copy judging payload</button>
@@ -4070,14 +4160,14 @@ function thumbBody3_8(ep){
       </div>
     </div>
 
-    <div class="flow-step-h"><span class="fn">4</span><span class="ft">Save the three</span><span class="fs">1280×720 PNG + editable source, same stem</span></div>
+    <div class="flow-step-h"><span class="fn">7</span><span class="ft">Save the three</span><span class="fs">1280×720 PNG + editable source, same stem</span></div>
     <div class="thumb-picks">${pickRows}</div>
     <div style="font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.55">
       Save each PNG and its source under the same stem into <code>${episodeFolder(ep.day, ep.topic_short)}/</code>.
       Upload all three to YouTube Test &amp; Compare — v1 is the default the test runs against.
     </div>
 
-    <div class="flow-step-h"><span class="fn">5</span><span class="ft">Mark complete</span><span class="fs">three saved and uploaded to Test &amp; Compare</span></div>
+    <div class="flow-step-h"><span class="fn">8</span><span class="ft">Mark complete</span><span class="fs">three saved and uploaded to Test &amp; Compare</span></div>
     <div class="row"><button class="btn primary" onclick="thumbMarkComplete()">${st.status === 'passed' ? '✓ Completed' : 'Mark complete'}</button></div>
     <div class="learnings-bar" style="margin-top:22px">
       <h3><span>Learnings · 3.8 <span class="hint">included in every future 3.8 payload · use <code>Active Rule AR-###:</code> to promote a line to a hard constraint</span></span></h3>
@@ -4480,45 +4570,7 @@ function resetEpisode(){
 // improvised and returned two photorealistic movie posters for EP002. This is
 // addressed to the generator itself, counts its own output, and puts the hard
 // bans before the creative brief rather than after it.
-const THUMB_FRAME_PROTOCOL = [
-'### What you are making',
-'',
-'Three finished YouTube thumbnails, 16:9 landscape, 1280 by 720 pixels. Each one is complete when it leaves you \u2014 background, illustration and lettering all drawn in the same image. Nothing is added afterwards.',
-'',
-'### The look',
-'',
-'Flat editorial graphic design, not an illustration of a scene. One very dark ground, one large number, up to three words, one simple object. Hard edges and solid fills throughout. Think a printed magazine cover or a transit poster, not a render.',
-'',
-'### The ground',
-'',
-'One flat, solid, very dark warm near-black brown, hex 2A2520, edge to edge behind everything. No gradient, no vignette, no spotlight, no texture, no grain, no paper, no room, no floor, no horizon, no depth.',
-'',
-'### The colours',
-'',
-'At most three colours on top of that ground, chosen from: warm off-white E4DDD0, golden yellow F5C518, strong red E63946, slate blue-grey 8BA8B5. No other colours anywhere. Solid fills only \u2014 no gradients, no shading, no highlights, no glow, no drop shadows, no reflections.',
-'',
-'### The lettering',
-'',
-'Heavy condensed sans-serif, all capitals, tightly set, sitting perfectly horizontal. Nothing is rotated, tilted, arched, italic, outlined, embossed, three-dimensional, or given a shadow or a gradient. The number is the largest thing in the image by a wide margin.',
-'',
-'Each prompt states the exact text for that thumbnail in quotation marks. Spell it exactly as written, character for character. Text is the one thing that cannot be fixed later, so if a generation comes back misspelled, discard it and generate again rather than trying to repair it.',
-'',
-'### Nothing else in the frame',
-'',
-'Only the number and the words. No captions, no subtitles, no extra sentences, no labels written onto the object, no channel name, no logo, no watermark, no signature, no arrows, no callout boxes, no borders, no frame lines, no interface elements, no charts.',
-'',
-'### The object',
-'',
-'One simple recognisable thing, drawn flat, as a pictogram would be. No photorealism, no 3D rendering, no lens effects, no smoke, no sparks. Never a face, a head or a full body. A flat hand silhouette is allowed and is often the strongest choice on a channel that shows no presenter.',
-'',
-'### The test that matters',
-'',
-'The image will be seen at 168 pixels wide in a crowded feed. If the number is not instantly readable and the object is not nameable at that size, the candidate has failed however clean it looks at full size.',
-'',
-'### Three thumbnails, three ideas',
-'',
-'The three are different concepts, not one idea in three colourways. Each prompt below names its own composition and its own object.'
-].join('\n');
+
 
 // One payload cannot serve every tool. Claude Design WRITES CODE, so its
 // payload wants exact hex, font stacks and frame geometry. Gemini and ChatGPT
@@ -4552,65 +4604,29 @@ You are producing an editable design on a canvas, not a description of one. Buil
   },
   gemini: {
     label: 'Gemini',
-    sub: 'whole thumbnails · 3 prompts',
-    note: 'Generates finished frames from one prompt each. Strong on short lettering. Will approximate brand hex and cannot use Barlow, so expect it to score well on legibility and lose points on brand fidelity.',
-    plans: {
-      free: `### Plan · free tier
-
-The free tier caps image generations per day, so every prompt is a real cost and a misspelled one is a wasted one.
-
-- One prompt per message. Paste prompt 1, wait for the image, then prompt 2, then prompt 3. All three in one message returns a collage.
-- Read the text in the result before anything else. If a single character of the number or the words is wrong, discard it and re-paste the same prompt. Asking it to fix the spelling rewrites the whole composition and usually breaks something else.
-- If it replies with a description, an offer or a clarifying question, answer with exactly: Generate the image.
-- Ask for 16:9. If it returns square anyway, keep it only if nothing important sits near the edges, because Studio's exporter will crop it to 1280 by 720.
-- Free-tier models drift toward photorealism and toward soft lighting within a few turns. Re-paste the prompt verbatim rather than correcting in conversation.
-- Do not re-explain the brief between attempts. Restating it restarts the negotiation and loses constraints.
-- Judge at 168 pixels wide, not at full size. Shrink the image before deciding it worked.`,
-      pro: `### Plan · paid tier
-
-More generations and a stronger image model, which mainly buys you better lettering. Spend the headroom on fresh attempts, not on edits.
-
-- Take two or three shots at each thumbnail and keep the one with the cleanest lettering. Extra takes do not count toward the three candidates.
-- Targeted edits hold better here, but misspelled text is a generation-level failure. Regenerate it.
-- Ask for 16:9 explicitly and for the largest size the account allows. Studio crops to exactly 1280 by 720 either way.
-- Ask it to state, in the chat before generating, the exact characters it is about to letter. That one line catches most spelling failures before a generation is spent.
-- The number's cap height is the usual miss. If it comes back looking like a caption rather than a headline, regenerate rather than accepting it.`
-    },
-    frameNotes: `### Gemini specifics
-
-- Do not narrate, do not explain, do not ask a clarifying question. Generate.
-- Gemini drifts back toward photorealism and soft lighting within a few turns. Each prompt below restates flat, hard-edged and solid-filled for that reason. Do not strip those lines to shorten it.
-- Gemini will letter the object itself if left room \u2014 a brand name on a jar, a figure on a dial. The prompts forbid it explicitly; if it happens anyway, regenerate.
-- Gemini handles short strings well and long ones badly. The text in each prompt is deliberately at most a number and three words.`
+    sub: 'renders the 3 concepts',
+    note: 'Takes each concept prompt as-is. Strong on short lettering. Approximates brand hex and cannot use Barlow, so it competes on composition and loses points on brand fidelity.',
+    renders: true,
+    tips: [
+      'One prompt per message. Paste, wait for the image, then the next.',
+      'Read the lettering before anything else. One wrong character means discard and re-paste the same prompt \u2014 asking it to fix spelling rebuilds the whole picture.',
+      'If it replies with a description or a question, answer with exactly: Generate the image.',
+      'It drifts toward photorealism and soft lighting after a few turns. Re-paste rather than correcting in conversation.',
+      'Ask for 16:9. Square is still usable \u2014 the exporter crops to 1280\u00d7720.'
+    ]
   },
   gpt: {
     label: 'ChatGPT',
-    sub: 'whole thumbnails · 3 prompts',
-    note: 'Generates finished frames from one prompt each. Builds a scene unless told there is none. Same trade as Gemini: strong composition, approximate palette and type.',
-    plans: {
-      free: `### Plan · free tier
-
-Image generations are capped and refresh slowly, so each prompt should buy a clean attempt rather than a repair.
-
-- One prompt per message, three messages, same chat.
-- Check the lettering first. Any wrong character means discard and re-paste the same prompt. This model will happily "fix" text by rebuilding the entire image around it.
-- This model's failure mode is adding a scene: a desk, a wall, a light source, a shadow under the object, an explanatory caption. The prompts rule all of that out explicitly. If it appears anyway, regenerate.
-- If it answers with a description or a clarifying question, reply with exactly: Generate the image now.
-- Ask for 16:9. If it refuses, accept what it gives and let Studio's exporter crop to 1280 by 720 rather than burning a generation arguing.
-- If the chat has drifted after several attempts, start a fresh one and paste the preamble plus the single prompt again.`,
-      pro: `### Plan · paid tier
-
-- Two or three takes per thumbnail, keep the cleanest lettering. Takes are not candidates.
-- Before generating, ask it to restate in one line: the exact number, the exact words, the number of colours, and that there is no background scene. That single line catches most failures before a generation is spent.
-- Targeted edits are more reliable here, but misspelled lettering and an invented background scene are prompt-level failures. Regenerate those.
-- Ask for 16:9 at the largest available size.
-- Shrink to 168 pixels wide before judging. It is the only test that predicts feed performance.`
-    },
-    frameNotes: `### ChatGPT specifics
-
-- Do not narrate, do not explain, do not ask a clarifying question. Generate.
-- This model's failure mode is building a scene: a setting, a surface, supporting props, a soft shadow, an explanatory caption. There is no scene here. A flat ground, one object, the lettering.
-- It also likes to add a small tagline under the headline. There is no tagline. Only the number and the words given in the prompt.`,
+    sub: 'renders the 3 concepts',
+    note: 'Takes each concept prompt as-is. Builds a scene unless told there is none. Same trade as Gemini: strong composition, approximate palette and type.',
+    renders: true,
+    tips: [
+      'One prompt per message, three messages, same chat.',
+      'Its failure mode is adding a scene \u2014 a desk, a wall, a shadow, a caption. The prompt rules that out; if it appears anyway, regenerate.',
+      'It also likes to invent a tagline. There is no tagline, only the number and the words in the prompt.',
+      'If it answers with a description, reply with exactly: Generate the image now.',
+      'If the chat has drifted after several tries, start a fresh one rather than arguing.'
+    ]
   }
 };
 const THUMB_TOOLS = ['design','gemini','gpt'];
@@ -4632,11 +4648,6 @@ const THUMB_CRIT = [
 
 async function buildPayload(sid, variant){
   const ep = activeEpisode();
-  // Image tools never see the generic payload. See thumbFramePayload.
-  if (sid === '3.8'){
-    const _ov = String(variant || '').split(':');
-    if (_ov[0] === 'gemini' || _ov[0] === 'gpt') return thumbFramePayload(ep, _ov[0], _ov[1] || 'free');
-  }
   const meta = STAGE_META[sid];
   const pillarMap = {P1:'Why Everyone Gets X Wrong (30% · PRIMARY · word band 1,150–1,300)',
                      P2:'The X Explained (25% · SECONDARY · word band 1,300–1,450)',
@@ -4973,29 +4984,45 @@ function thumbTrim(text, variant, ep){
     text = text.slice(0, a) + (b < 0 ? '' : text.slice(b));
   };
   cut('## Voice canon (locked)', '## Brand tokens');
-  cut('## Output requirements', '\n---\n\n*Payload generated');
+  // 3.8 is a Claude stage again, so the self-rating contract stays.
 
   const epTok = _epToken(ep.day);
   const dTok = 'D' + epTok.replace(/^EP/, '');
 
-  const frameSpec = [
-'## Output requirements',
+  const conceptSpec = [
 '',
-'**Three candidates. Not one, not two.** Each on a different archetype. Say DONE n OF 3 in the chat after each.',
+'---',
 '',
-'### The episode token is ' + epTok,
+'## What this stage delivers',
 '',
-'The Strategy Brief inlined above is an older document carrying the token ' + dTok + ' in its own header and footer. Ignore it. Nothing you produce carries an episode code at all.',
+'One file: `' + _epToken(ep.day) + '.8_ThumbConcepts_v1.html`. It carries both halves of the stage.',
 '',
-'### The mark',
+'**Half one \u2014 three finished frames.** Three complete 1280\u00d7720 thumbnails, each in its own element carrying `data-screen-label="design-1"`, `"design-2"`, `"design-3"` and exact inline `width:1280px;height:720px`. Studio rasterises these to PNG directly, so they must be self-contained markup with no `<img>` and no external asset.',
 '',
-'The only branding is the word MPD, in DM Mono, 15px, slate 8BA8B5, in one corner. No episode code, no stage number, no slashes, no channel name, no logo.',
+'**Half two \u2014 the concept block.** A single JSON script tag Studio parses to build the image-model prompts. Exactly this shape, exactly this id:',
 '',
-'### Fill the frame',
+'```html',
+'<' + 'script type="application/json" id="mpd-thumb-concepts">',
+'{"episode":"' + _epToken(ep.day) + '","concepts":[',
+'  {"id":"c1","archetype":"slam","number":"10%","words":"ISN\'T ENOUGH",',
+'   "subject":"a piggy bank sawn cleanly in half","loss":false,',
+'   "figure_source":"Ch1 \u00b7 median household savings rate"},',
+'  {"id":"c2", ...},',
+'  {"id":"c3", ...}',
+']}',
+'<' + '/script>',
+'```',
 '',
-'The number is the largest thing in the image: its cap height must be **at least 45 percent of the frame height** and no more than 62 percent. A number at a quarter of the height is a failed candidate however clean it looks, because the point is legibility at 168 pixels wide.',
+'### Field rules',
 '',
-'No decorative border, frame line or inner rule around the canvas edge. That is a fourth element.',
+'- `archetype` \u2014 one of `slam`, `redaction`, `broken`, `hand`, `split`. **All three concepts must differ.**',
+'- `number` \u2014 at most six glyphs. Comes from the Strategy Brief and nowhere else. Never rounded for effect, never from the caption transcript.',
+'- `words` \u2014 at most three words, at most fourteen characters excluding spaces. Shares zero content words with the video title.',
+'- `subject` \u2014 one concrete physical object, written as a drawable noun phrase a stranger could sketch: "a piggy bank sawn cleanly in half", not "savings". Never a concept, never a scene, never a chart. It is pasted verbatim into an image prompt, so write it as the prompt should read.',
+'- `loss` \u2014 true when the figure represents a loss, which puts the number in red instead of amber.',
+'- `figure_source` \u2014 chapter and label the number came from. This is the audit trail; a concept without one cannot be verified.',
+'',
+'The three concepts are three genuinely different ideas, not one idea in three layouts. Every one of them will be drawn three times \u2014 once by you here, once by Gemini, once by ChatGPT \u2014 and the nine compared, so a weak third concept costs three of the nine slots.',
 '',
 '### Nothing but the design goes in the frame',
 '',
@@ -5009,24 +5036,23 @@ function thumbTrim(text, variant, ep){
 '',
 '### Delivery',
 '',
-'Export as standalone HTML per the tool section above, then drop it into Studio step 2 for rasterising.',
+'Export as one standalone HTML file per the tool section above, then load it into Studio step 3.',
 ''
   ].join('\n');
 
+  return text + '\n' + conceptSpec
   return text + '\n' + frameSpec
        + '\n---\n\n*Purpose-built Stage 3.8 payload \u00b7 MPD Studio v' + APP_VERSION + ' \u00b7 ' + new Date().toISOString().slice(0,16) + '*\n';
 }
 
 // ── Stage 3.8 · frame payload (v3.17.0) ─────────────────────────────
-// Gemini and ChatGPT now return finished 1280x720 candidates rather than
-// objects, so a single prompt has to carry everything the image will contain:
-// composition, palette, type treatment and the literal lettering. They still
-// never see the generic stage payload — no Strategy Brief, no gates, no
-// archetype theory, no JSON tail. A model handed a 40KB document produces a
-// document's worth of ideas in one frame; a model handed one paragraph
-// produces one image. Known limits, accepted deliberately: brand hex is
-// approximated, Barlow Condensed is unavailable, the amber signature bar is
-// best-effort. Those cost BRD points at judging and are visible there.
+// The prompt body was the part that worked. What is gone is the 9KB of
+// wrapper that used to surround it — protocol, plans, tool notes, choose
+// blocks: Gemini answered the wrapper instead of drawing, and ChatGPT lettered
+// a placeholder into a frame. One paragraph per concept, nothing else, and a
+// prompt with any field missing is never emitted at all. Known limits,
+// accepted deliberately: brand hex is approximated and Barlow is unavailable,
+// which costs BRD points at judging and is visible there.
 const THUMB_ARCH_SHOT = {
   slam: f => 'The number is the dominant element and sits left of centre. To its right, '
            + f.subject + ' is drawn large and bleeds off the right edge of the frame.',
@@ -5048,7 +5074,8 @@ function thumbFramePrompt(f){
   const subj = (f.subject || '').trim();
   const num  = (f.number  || '').trim();
   const wds  = (f.words   || '').trim();
-  const shot = THUMB_ARCH_SHOT[arch]({ subject: subj || '[SUBJECT — the object you proposed above]' });
+  if (!subj || !num || !wds) return '';   // a placeholder must never reach a pasteable prompt
+  const shot = THUMB_ARCH_SHOT[arch]({ subject: subj });
   const numColour = f.loss ? 'strong red #E63946' : 'golden yellow #F5C518';
   return [
 'A 16:9 landscape YouTube thumbnail, 1280 by 720 pixels, in a flat editorial graphic style.',
@@ -5059,8 +5086,8 @@ shot,
 '',
 'Use at most three colours on top of that ground, from: warm off-white #E4DDD0, golden yellow #F5C518, strong red #E63946, slate blue-grey #8BA8B5. Solid fills only. No gradients, no shading, no highlights, no glow, no drop shadows, no reflections. The object is drawn flat like a pictogram, with hard edges. No photorealism, no 3D render, no lens effects.',
 '',
-'There are exactly two pieces of text in the image and nothing else. The large number reads exactly "' + (num || '[NUMBER — take this from the Strategy Brief, never invent it]')
-  + '". The words read exactly "' + (wds || '[WORDS — at most three]') + '". Spell both exactly as written here, character for character.',
+'There are exactly two pieces of text in the image and nothing else. The large number reads exactly "' + num
+  + '". The words read exactly "' + wds + '". Spell both exactly as written here, character for character.',
 '',
 'The number is ' + numColour + ', set in a heavy condensed sans-serif, all capitals, tightly spaced, perfectly horizontal. Its cap height is ' + THUMB_ARCH_CAP[arch]
   + ' of the image height, so it dominates the frame. The words are warm off-white #E4DDD0 in the same heavy condensed face, much smaller than the number. Nothing is rotated, tilted, arched, italic, outlined, embossed or three-dimensional, and no letter carries a shadow or a gradient.',
@@ -5076,84 +5103,6 @@ shot,
   ].join('\n');
 }
 
-function thumbFramePayload(ep, tool, plan){
-  const v = THUMB_VARIANTS[tool] || {};
-  const frames = thumbFrames(ep);
-  const planTxt = (v.plans && v.plans[plan]) ? v.plans[plan] : '';
-  const missingSubject = frames.some(f => !(f.subject || '').trim());
-  const missingNumber  = frames.some(f => !(f.number  || '').trim());
-
-  const chooseBlock = !missingSubject ? '' : [
-'## Choose the missing objects first',
-'',
-'One or more prompts below carry a subject placeholder. Before generating anything, propose a concrete physical object for each placeholder, print the three as a numbered list in the chat, and then generate using them. Each must be:',
-'',
-'- a single physical thing a person could point at, not a concept and not a scene',
-'- namable from its outline alone at 168 pixels wide',
-'- a different subject from the other two',
-'',
-'### Episode context, for choosing objects only',
-'',
-'- Topic · ' + (ep.topic || ''),
-'- Angle · ' + (ep.pillar || ''),
-'- Search intent · ' + (ep.keyword || ''),
-'',
-'Nothing else about the episode appears in the image. The lettering is fixed by the prompts and must not be changed to match the topic.',
-''
-  ].join('\n');
-
-  const numberBlock = !missingNumber ? '' : [
-'## A number is missing',
-'',
-'One or more prompts carry a number placeholder. **Do not invent a figure.** Every number on this channel\'s thumbnails comes from the episode research and nowhere else. Generate the candidates whose numbers are given, and say plainly in the chat which prompt is missing its figure rather than filling the gap yourself.',
-''
-  ].join('\n');
-
-  const prompts = frames.map((f, i) => [
-'### Prompt ' + (i+1) + ' of 3 · ' + ((THUMB_ARCHETYPES[f.arch] && THUMB_ARCHETYPES[f.arch].label) || f.arch),
-'',
-'```',
-thumbFramePrompt(f),
-'```',
-''
-  ].join('\n')).join('\n');
-
-  return [
-'# MPD · Stage 3.8 · thumbnails · ' + _epToken(ep.day)
-  + ' · ' + (v.label || tool) + (THUMB_PLANS[plan] ? ' · ' + THUMB_PLANS[plan] : ''),
-'',
-'You are generating three finished YouTube thumbnails, one per prompt. Each image is complete as it leaves you. Read the whole message before generating.',
-'',
-'---',
-'',
-THUMB_FRAME_PROTOCOL,
-'',
-'---',
-'',
-v.frameNotes || '',
-'',
-planTxt ? '---\n\n' + planTxt : '',
-(chooseBlock || numberBlock) ? '---\n\n' + chooseBlock + numberBlock : '',
-'---',
-'',
-'## The three prompts',
-'',
-'Paste one block at a time, one per message, and wait for each image before sending the next. The rules are repeated in full inside every block on purpose. Do not shorten them and do not merge the blocks.',
-'',
-prompts,
-'---',
-'',
-'After each image, print one line in the chat, never in the picture:',
-'',
-'`THUMBNAIL n of 3 COMPLETE — number lettered: [exact characters] — words lettered: [exact characters] — colours: [up to 3] — background scene: none`',
-'',
-'---',
-'',
-'*Thumbnail payload · MPD Studio v' + APP_VERSION + ' · ' + new Date().toISOString().slice(0,16)
-  + ' · download the three images and load them into Studio step 2 for the exact 1280x720 crop.*',
-''
-  ].join('\n');
-}
 
 async function copyPayload(sid, variant){
   let text;
