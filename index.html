@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MPD Studio · v3.20.0</title>
+<title>MPD Studio · v3.20.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&family=Barlow:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -383,8 +383,9 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 .tf-badge.ok{color:var(--teal-deep);background:#2DB89D1F}
 .tf-badge.bad{color:var(--red,#E63946);background:#E639461A}
 .tv-empty{font-size:12px;color:var(--ink-soft);font-style:italic}
-.tv-loaded{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;font-size:12.5px}
-.tv-loaded span{font-family:var(--font-mono);font-size:10px;color:var(--ink-soft)}
+.tv-card.waiting{opacity:.62}
+.tv-plan.off .tv-ic{pointer-events:none}
+.btn[disabled]{opacity:.4;cursor:not-allowed;pointer-events:none}
 .tf-arch-r{font-family:var(--font-mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);flex:0 0 auto}
 .tf-txt{font-size:12.5px;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tf-txt b{font-family:var(--font-display);font-weight:900;font-size:14px}
@@ -427,7 +428,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 <aside class="side">
   <div class="brand">
     MPD<br>Studio
-    <small id="app-ver">v3.20.0 · single-file · cloud-synced</small>
+    <small id="app-ver">v3.20.1 · single-file · cloud-synced</small>
   </div>
 
   <nav class="navlist" id="nav">
@@ -977,7 +978,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 // ════════════════════════════════════════════════════════════════════
 //  STATE SCHEMA + SEED
 // ════════════════════════════════════════════════════════════════════
-const APP_VERSION = '3.20.0';
+const APP_VERSION = '3.20.1';
 // Infrastructure contract versions Stage 3.6 depends on. Bump alongside any
 // change to the episode.json shape or the shell validator, and the payload's
 // preflight expectation moves with it automatically.
@@ -4113,30 +4114,43 @@ function thumbBody3_8(ep){
   const loaded = !!t8.conceptsAt;
 
   const nSets = thumbAllSets().filter(([tl, pl]) => thumbPromptSet(ep, tl, pl).length === 3).length;
-  const conceptPanel = !loaded
-    ? `<div class="tv-subj tv-empty">No prompts loaded yet. Step 2 produces the file; load it above and the payload cards appear.</div>`
-    : `<div class="tv-subj tv-loaded"><b>${(t8.versions||[]).length} versions \u00b7 ${nSets}/${thumbAllSets().length} prompt sets</b>
-        <span>${escapeHtml(t8.conceptsFile||'loaded')} \u00b7 ${escapeHtml(String(t8.conceptsAt).slice(0,16).replace('T',' '))}</span></div>`;
+  const cFile = _epToken(ep.day) + '.8_ThumbConcepts_v1.html';
 
-  // Same shape as the payload cards: one card per tool, copy / download /
-  // preview on each row. Download is not a nicety — it is the truncation-proof
-  // path, and free tiers are exactly where a long paste gets cut in a cramped
-  // window.
-  const promptCards = !loaded ? '' : THUMB_TOOLS.map(tool => {
+  // Same row shape as every other stage input: badge, detail line, action on
+  // the right. A file the stage consumes should not look different because it
+  // happens to arrive from a chat rather than the workspace.
+  const conceptRow = `<div class="input-row" style="display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 10px;background:var(--canvas-deep);margin-bottom:6px">
+    <div style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;min-width:130px">
+      ${loaded ? `<span style="color:var(--teal-deep);font-weight:600">\u2713 loaded</span>`
+               : `<span style="color:var(--red);font-weight:600">\u26a0 missing (required)</span>`}</div>
+    <div>${loaded
+      ? `<code>${escapeHtml(t8.conceptsFile || cFile)}</code> <span style="color:var(--ink-soft)">\u00b7 ${(t8.versions||[]).length} versions \u00b7 ${nSets}/${thumbAllSets().length} prompt sets \u00b7 ${escapeHtml(String(t8.conceptsAt).slice(0,16).replace('T',' '))}</span>`
+      : `<span style="color:var(--ink-soft)">no concepts file loaded \u2014 step 2 produces it</span>`}</div>
+    <div><label class="btn ${loaded ? 'ghost' : 'primary'} tiny" style="cursor:pointer;margin:0">${loaded ? 're-pick' : 'Pick file'} (${escapeHtml(cFile)})
+      <input type="file" accept=".html,.htm" style="display:none" onchange="thumbLoadConceptsFile(this)"></label></div>
+  </div>`;
+
+  // The cards render whether or not a file is loaded, disabled until it is.
+  // A control that appears only after the thing it acts on gives no clue that
+  // the step exists at all.
+  const promptCards = THUMB_TOOLS.map(tool => {
     const v = THUMB_VARIANTS[tool];
     const rows = thumbPlansFor(tool).map(pl => {
       const set = thumbPromptSet(ep, tool, pl);
-      const bad = set.length !== 3;
       const lab = pl ? THUMB_PLANS[pl] : 'Prompts';
-      return `<div class="tv-plan">
+      const off = set.length !== 3;
+      const dis = off ? ' disabled' : '';
+      const why = !loaded ? 'load the concepts file first' : (off ? set.length + '/3 prompts \u2014 fix in the concepts file' : '');
+      const args = `'${tool}',${pl ? `'${pl}'` : 'null'}`;
+      return `<div class="tv-plan${off ? ' off' : ''}">
         <span class="tv-plan-l">${lab}</span>
-        ${bad ? `<span class="tf-badge bad">${set.length}/3 \u2014 fix in the concepts file</span>` : `
-        <button class="btn ${pl==='free'?'ghost':'primary'} tiny tv-ic" onclick="thumbCopyPromptSet('${tool}',${pl?`'${pl}'`:'null'})" title="${lab} \u2014 copy all three prompts" aria-label="Copy ${lab}">📋</button>
-        <button class="btn ghost tiny tv-ic" onclick="thumbDownloadPromptSet('${tool}',${pl?`'${pl}'`:'null'})" title="${lab} \u2014 save as .md, immune to paste truncation" aria-label="Download ${lab}">⬇</button>
-        <button class="btn ghost tiny tv-ic" onclick="thumbPreviewPromptSet('${tool}',${pl?`'${pl}'`:'null'})" title="${lab} \u2014 preview" aria-label="Preview ${lab}">👁</button>`}
+        <button class="btn ${pl==='free'?'ghost':'primary'} tiny tv-ic"${dis} onclick="thumbCopyPromptSet(${args})" title="${why || lab + ' \u2014 copy all three prompts'}" aria-label="Copy ${lab}">📋</button>
+        <button class="btn ghost tiny tv-ic"${dis} onclick="thumbDownloadPromptSet(${args})" title="${why || lab + ' \u2014 save as .md, immune to paste truncation'}" aria-label="Download ${lab}">⬇</button>
+        <button class="btn ghost tiny tv-ic"${dis} onclick="thumbPreviewPromptSet(${args})" title="${why || lab + ' \u2014 preview'}" aria-label="Preview ${lab}">👁</button>
+        ${loaded && off ? `<span class="tf-badge bad">${set.length}/3</span>` : ''}
       </div>`;
     }).join('');
-    return `<div class="tv-card${tool==='design'?' rec':''}">
+    return `<div class="tv-card${tool==='design'?' rec':''}${loaded?'':' waiting'}">
       <div class="tv-h">${v.label}${tool==='design'?'<span class="tv-flag"> · start here</span>':''}</div>
       <div class="tv-sub">3 prompts${thumbPlansFor(tool).length > 1 ? ' per plan' : ''}</div>
       <div class="tv-note">${v.note}</div>
@@ -4178,25 +4192,13 @@ function thumbBody3_8(ep){
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px;line-height:1.55">Claude reads the brief, so Claude writes the concepts \u2014 archetype, number, words and drawable subject for each of three ideas \u2014 and returns one HTML file carrying three finished frames plus a machine-readable concept block. Every figure carries the chapter it came from. <b>Opus</b>, fresh chat.</p>
     <div class="tv-grid">${cards}</div>
 
-    <div class="flow-step-h"><span class="fn">3</span><span class="ft">Load the concepts HTML</span><span class="fs">fills the prompts \u00b7 rasterises Design's three</span></div>
-    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;line-height:1.55">The file is prompts, not pictures \u2014 a sketch of three thumbnail versions and the five prompt sets that produce them. Studio carries every prompt across unedited and never writes one. The exporter below is for the images that come back, once you have them.</p>
-    <div class="row" style="gap:8px;align-items:center;margin-bottom:10px">
-      <label class="btn primary tiny" style="cursor:pointer">\u2191 Load concepts HTML
-        <input type="file" accept=".html,.htm" style="display:none" onchange="thumbLoadConceptsFile(this)">
-      </label>
-      ${loaded ? `<span class="mono" style="font-size:10px;color:var(--ink-soft)">loaded ${escapeHtml(String(t8.conceptsAt).slice(0,16).replace('T',' '))}</span>` : ''}
-    </div>
-    ${conceptPanel}
+    <div class="flow-step-h"><span class="fn">3</span><span class="ft">Prompts and renders</span><span class="fs">load the concepts file \u00b7 run the ${thumbAllSets().length} sets \u00b7 rasterise</span></div>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;line-height:1.55">The concepts file is prompts, not pictures. Load it and Studio reads the ${thumbAllSets().length} prompt sets straight out of it \u2014 it never writes or repairs one. Take a card at a time: copy its three prompts, paste them into that tool one message at a time, collect three results, then move on. Three versions \u00d7 three tools = <b>${thumbSampleCount()}</b> candidates. Claude Design returns markup, so run that back through the converter below for the exact 1280\u00d7720 PNG.</p>
+    ${conceptRow}
+    <div class="tv-grid" style="margin-top:12px">${promptCards}</div>
     <div id="tx-panel"></div>
 
-    <div class="flow-step-h"><span class="fn">4</span><span class="ft">Render the three, twice</span><span class="fs">same concepts \u00b7 Gemini and ChatGPT</span></div>
-    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;line-height:1.55">Take one card at a time. Copy its three prompts, paste them into that tool one message at a time, and collect three results before moving to the next card. Three versions \u00d7 three tools = <b>${thumbSampleCount()}</b> candidates, so the comparison is nine executions of three ideas rather than nine unrelated pictures. Claude Design returns markup \u2014 run it back through the exporter in step 3 for the exact 1280\u00d7720 PNG.</p>
-    <div class="tv-grid">${promptCards}</div>
-    ${loaded ? `<div class="tp-tips">${THUMB_TOOLS.filter(x => THUMB_VARIANTS[x].renders).map(x =>
-      `<div class="tp-tip"><b>${THUMB_VARIANTS[x].label}</b><ul>${(THUMB_VARIANTS[x].tips||[]).map(li => `<li>${li}</li>`).join('')}</ul></div>`).join('')}</div>`
-      : '<div class="tv-subj tv-empty">Load the concepts file in step 3 and the payload cards appear here.</div>'}
-
-    <div class="flow-step-h"><span class="fn">5</span><span class="ft">Save the ${thumbSampleCount()}</span><span class="fs">candidate filenames for the judging chat</span></div>
+    <div class="flow-step-h"><span class="fn">4</span><span class="ft">Save the ${thumbSampleCount()}</span><span class="fs">candidate filenames for the judging chat</span></div>
     <div class="sn-bar">
       <span class="sn-lead">Save-as<span class="sn-note">Design's three are named by the exporter</span></span>
       ${THUMB_TOOLS.map(t2 => `<span class="sn-grp">${[1,2,3].map(i =>
@@ -4205,7 +4207,7 @@ function thumbBody3_8(ep){
       <span class="sn-key">${THUMB_TOOLS.map(t2 => `${THUMB_ICON[t2]} ${THUMB_VARIANTS[t2].label}`).join(' \u00b7 ')}</span>
     </div>
 
-    <div class="flow-step-h"><span class="fn">6</span><span class="ft">Claude judges    <div class="flow-step-h"><span class="fn">3</span><span class="ft">Claude judges the ${thumbSampleCount()}</span><span class="fs">attach the PNGs · paste the JSON tail back</span></div>
+    <div class="flow-step-h"><span class="fn">5</span><span class="ft">Claude judges the ${thumbSampleCount()}</span><span class="fs">attach the PNGs · paste the JSON tail back</span></div>
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px">Rename the candidates to the sample filenames above, attach them to a fresh <b>Opus</b> chat with this payload, and paste the returned JSON tail below. It scores all ${thumbSampleCount()} against the rubric, enforces archetype diversity across the picks, and fills v1/v2/v3.</p>
     <div class="payload-actions">
       <button class="btn primary" onclick="copyThumbJudge()">📋 Copy judging payload</button>
@@ -4223,14 +4225,14 @@ function thumbBody3_8(ep){
       </div>
     </div>
 
-    <div class="flow-step-h"><span class="fn">7</span><span class="ft">Save the three</span><span class="fs">1280×720 PNG + editable source, same stem</span></div>
+    <div class="flow-step-h"><span class="fn">6</span><span class="ft">Save the three</span><span class="fs">1280×720 PNG + editable source, same stem</span></div>
     <div class="thumb-picks">${pickRows}</div>
     <div style="font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.55">
       Save each PNG and its source under the same stem into <code>${episodeFolder(ep.day, ep.topic_short)}/</code>.
       Upload all three to YouTube Test &amp; Compare — v1 is the default the test runs against.
     </div>
 
-    <div class="flow-step-h"><span class="fn">8</span><span class="ft">Mark complete</span><span class="fs">three saved and uploaded to Test &amp; Compare</span></div>
+    <div class="flow-step-h"><span class="fn">7</span><span class="ft">Mark complete</span><span class="fs">three saved and uploaded to Test &amp; Compare</span></div>
     <div class="row"><button class="btn primary" onclick="thumbMarkComplete()">${st.status === 'passed' ? '✓ Completed' : 'Mark complete'}</button></div>
     <div class="learnings-bar" style="margin-top:22px">
       <h3><span>Learnings · 3.8 <span class="hint">included in every future 3.8 payload · use <code>Active Rule AR-###:</code> to promote a line to a hard constraint</span></span></h3>
