@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MPD Studio · v3.16.0</title>
+<title>MPD Studio · v3.17.0</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700;900&family=Barlow:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -371,7 +371,17 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 .tv-subj-n{font-family:var(--font-mono);font-size:10px;color:var(--ink-soft);flex:0 0 auto;width:14px;text-align:right}
 .tv-subj-i{flex:1;min-width:0;box-sizing:border-box;font-size:12.5px;padding:6px 8px;border:1px solid var(--hairline);border-radius:6px;font-family:inherit;background:var(--canvas-deep);color:var(--ink)}
 .tv-subj-i:focus{outline:none;border-color:var(--teal)}
-.tv-subj-f{font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin-top:6px}
+.tv-subj-f{font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin-top:8px}
+.tf-row{padding:7px 0;border-top:1px solid var(--hairline)}
+.tf-row:first-of-type{border-top:0}
+.tf-top{display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap}
+.tf-arch{font-size:11.5px;padding:5px 6px;border:1px solid var(--hairline);border-radius:6px;background:var(--canvas-deep);color:var(--ink);font-family:inherit}
+.tf-num{flex:0 0 84px;max-width:84px}
+.tf-wds{flex:1 1 130px;min-width:110px}
+.tf-loss{font-family:var(--font-mono);font-size:9.5px;color:var(--ink-soft);display:flex;align-items:center;gap:3px;flex:0 0 auto}
+.tf-badge{font-family:var(--font-mono);font-size:9px;padding:3px 6px;border-radius:5px;flex:0 0 auto}
+.tf-badge.ok{color:var(--teal-deep);background:#2DB89D1F}
+.tf-badge.bad{color:var(--red,#E63946);background:#E639461A}
 /* composer (v3.13.0) */
 .co-grid{display:grid;grid-template-columns:minmax(210px,1fr) minmax(240px,1.35fr);gap:14px;margin-top:8px}
 @media(max-width:720px){.co-grid{grid-template-columns:1fr}}
@@ -400,7 +410,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 <aside class="side">
   <div class="brand">
     MPD<br>Studio
-    <small id="app-ver">v3.16.0 · single-file · cloud-synced</small>
+    <small id="app-ver">v3.17.0 · single-file · cloud-synced</small>
   </div>
 
   <nav class="navlist" id="nav">
@@ -950,7 +960,7 @@ a{color:var(--teal-deep);text-decoration:none;border-bottom:1px solid var(--teal
 // ════════════════════════════════════════════════════════════════════
 //  STATE SCHEMA + SEED
 // ════════════════════════════════════════════════════════════════════
-const APP_VERSION = '3.16.0';
+const APP_VERSION = '3.17.0';
 // Infrastructure contract versions Stage 3.6 depends on. Bump alongside any
 // change to the episode.json shape or the shell validator, and the payload's
 // preflight expectation moves with it automatically.
@@ -3009,15 +3019,48 @@ function thumbState(ep){
   while (st.thumb.subjects.length < 3) st.thumb.subjects.push('');
   return st.thumb;
 }
-// The subject is the single biggest lever on object quality. An image model
-// handed a named object draws it; handed a brief and left to choose, it
-// invents a poster. Typed here, injected verbatim into all three prompts.
-function thumbSubjects(ep){ return thumbState(ep).subjects; }
-function thumbSetSubject(ix, val){
-  const ep = activeEpisode(); if (!ep) return;
+// One prompt has to carry everything the image will contain, so the text is
+// typed here rather than left to the model. The number especially: every
+// figure on a thumbnail comes from the 3.1 brief, and an image model choosing
+// its own statistic is how a wrong number reaches a published frame.
+const THUMB_FRAME_DEFAULTS = ['slam','redaction','hand'];
+function thumbFrames(ep){
   const t = thumbState(ep);
-  t.subjects[ix] = String(val || '').trim();
+  if (!Array.isArray(t.frames)) t.frames = [];
+  while (t.frames.length < 3)
+    t.frames.push({ arch: THUMB_FRAME_DEFAULTS[t.frames.length] || 'slam',
+                    number:'', words:'', subject:'', loss:false });
+  // v3.16 stored three bare subjects; carry them forward rather than lose them.
+  if (Array.isArray(t.subjects)){
+    t.subjects.forEach((sub, i) => { if (sub && t.frames[i] && !t.frames[i].subject) t.frames[i].subject = sub; });
+    delete t.subjects;
+  }
+  return t.frames;
+}
+function thumbSetFrame(ix, k, v){
+  const ep = activeEpisode(); if (!ep) return;
+  const f = thumbFrames(ep)[ix]; if (!f) return;
+  f[k] = (k === 'loss') ? !!v : String(v || '').trim();
   markDirty();
+  if (k !== 'arch') thumbBudgetBadge(ix);
+}
+// Same budget the composer enforces: at most four elements, three words,
+// fourteen characters of words, six glyphs of number.
+function thumbBudget(f){
+  const n = String(f.number||'').trim(), w = String(f.words||'').trim();
+  const wordCount = w ? w.split(/\s+/).length : 0;
+  const chars = w.replace(/\s/g,'').length;
+  const glyphs = n.replace(/\s/g,'').length;
+  return { wordCount, chars, glyphs, total: wordCount + (n ? 1 : 0),
+           ok: !!n && wordCount <= 3 && chars <= 14 && glyphs <= 6 };
+}
+function thumbBudgetBadge(ix){
+  const ep = activeEpisode(); if (!ep) return;
+  const el = document.getElementById('tf-b' + ix); if (!el) return;
+  const g = thumbBudget(thumbFrames(ep)[ix]);
+  el.className = 'tf-badge ' + (g.ok ? 'ok' : 'bad');
+  el.textContent = g.glyphs + '/6 · ' + g.wordCount + '/3 · ' + g.chars + '/14'
+                 + (String(thumbFrames(ep)[ix].number||'').trim() ? '' : ' · no number');
 }
 function thumbKey(tool, i){ return tool + '-' + i; }
 function thumbLabelFor(tool){ return (THUMB_VARIANTS[tool] ? THUMB_VARIANTS[tool].label : tool); }
@@ -3414,10 +3457,10 @@ function txRenderPanel(){
 
 
 // ── Stage 3.8 · composer (v3.13.0) ──────────────────────────────────
-// Image models cannot be made to render exact typography in exact hex at an
-// exact element count; five rounds of prompt tightening bought a different
-// failure each time. So they stop trying: Gemini and ChatGPT now supply one
-// flat object with no text in it, and the type is set here — real Barlow
+// The fallback path for brand fidelity. Image models approximate hex and
+// cannot use Barlow at all, so a generated candidate always trades BRD points
+// for composition. When that trade is not acceptable — or when what you have
+// is an object rather than a thumbnail — compose here instead: real Barlow
 // Condensed from the deployed font file, exact brand hex, text budget
 // enforced at the input. Brand fidelity by construction, not by luck.
 const CO = {
@@ -3921,15 +3964,33 @@ function thumbBody3_8(ep){
     </div>`;
   }).join('');
 
-  const subs = thumbSubjects(ep);
-  const filledSubs = subs.filter(x => x && x.trim()).length;
+  const frames = thumbFrames(ep);
+  const readyFrames = frames.filter(f => thumbBudget(f).ok && (f.subject||'').trim()).length;
+  const phSub = ['a piggy bank sawn cleanly in half','a hand lifting one coin off a stack of ten','a payslip torn across the middle'];
+  const phNum = ['10%','$1.2M','38'];
+  const phWds = ['ISN\'T ENOUGH','THE REAL GAP','WHO PAID'];
   const subjectPanel = `<div class="tv-subj">
-    <div class="tv-subj-h"><b>Object subjects</b><span>${filledSubs}/3 named · injected verbatim into the ${THUMB_TOOLS.filter(t=>t!=='design').map(t=>THUMB_VARIANTS[t].label).join(' and ')} prompts</span></div>
-    ${[0,1,2].map(i => `<div class="tv-subj-r"><span class="tv-subj-n">${i+1}</span>`
-      + `<input class="tv-subj-i" type="text" value="${escapeHtml(subs[i]||'')}" spellcheck="false"`
-      + ` placeholder="${['a piggy bank sawn cleanly in half','a hand lifting one coin off a stack of ten','a payslip torn across the middle'][i]}"`
-      + ` onchange="thumbSetSubject(${i}, this.value)"></div>`).join('')}
-    <div class="tv-subj-f">One concrete physical object each, namable from its outline, three different subjects. Leave any blank and the payload makes the tool propose one from the topic first — workable, but naming them yourself is the single biggest lever on what comes back.</div>
+    <div class="tv-subj-h"><b>Thumbnail specs</b><span>${readyFrames}/3 ready · lettered verbatim into the ${THUMB_TOOLS.filter(t=>t!=='design').map(t=>THUMB_VARIANTS[t].label).join(' and ')} prompts</span></div>
+    ${frames.map((f, i) => {
+      const g = thumbBudget(f);
+      return `<div class="tf-row">
+        <div class="tf-top">
+          <span class="tv-subj-n">${i+1}</span>
+          <select class="tf-arch" onchange="thumbSetFrame(${i},'arch',this.value)">
+            ${Object.keys(THUMB_ARCHETYPES).map(k => `<option value="${k}"${k===f.arch?' selected':''}>${THUMB_ARCHETYPES[k].label}</option>`).join('')}
+          </select>
+          <input class="tv-subj-i tf-num" type="text" spellcheck="false" value="${escapeHtml(f.number||'')}"
+            placeholder="${phNum[i]}" title="the number — from the 3.1 brief only" onchange="thumbSetFrame(${i},'number',this.value)">
+          <input class="tv-subj-i tf-wds" type="text" spellcheck="false" value="${escapeHtml(f.words||'')}"
+            placeholder="${phWds[i]}" title="up to three words" onchange="thumbSetFrame(${i},'words',this.value)">
+          <label class="tf-loss" title="number in red — use when the figure is a loss"><input type="checkbox"${f.loss?' checked':''} onchange="thumbSetFrame(${i},'loss',this.checked)"> loss</label>
+          <span class="tf-badge ${g.ok?'ok':'bad'}" id="tf-b${i}">${g.glyphs}/6 · ${g.wordCount}/3 · ${g.chars}/14${(f.number||'').trim()?'':' · no number'}</span>
+        </div>
+        <input class="tv-subj-i" type="text" spellcheck="false" value="${escapeHtml(f.subject||'')}"
+          placeholder="${phSub[i]}" onchange="thumbSetFrame(${i},'subject',this.value)">
+      </div>`;
+    }).join('')}
+    <div class="tv-subj-f">Everything the image will contain is set here, because one prompt has to carry all of it. <b>The number comes from the 3.1 brief and nowhere else</b> — leave it blank and the payload tells the tool to say so rather than invent one. Budget is the same as the composer's: 6 glyphs of number, 3 words, 14 characters. Three different archetypes across the three keeps the A/B test honest.</div>
   </div>`;
 
   const opts = key => thumbAllKeys().map(k =>
@@ -3957,28 +4018,28 @@ function thumbBody3_8(ep){
     </div>
     <div style="font-size:12.5px;line-height:1.55;color:var(--ink-soft)">
       Every number on a thumbnail comes from the 3.1 brief and nowhere else — never the caption transcript, never rounded for effect.
-      Asset registry: <b>${assetCount}</b> entr${assetCount === 1 ? 'y' : 'ies'}, inlined into the Claude Design payload for reuse. The two object payloads carry no brief, no gates and no registry by design.
+      Asset registry: <b>${assetCount}</b> entr${assetCount === 1 ? 'y' : 'ies'}, inlined into the Claude Design payload for reuse. The two image payloads carry no brief, no gates and no registry by design — only the specs you set below.
       Ground is <b>Ink #2A2520</b> from v3.10 — figures in Canvas and Amber.
     </div>
     <div class="payload-actions"><button class="btn ghost tiny" onclick="refreshInputStatus('3.8')" title="Re-scan workspace">↻ Refresh inputs</button></div>
 
     <div class="flow-step-h"><span class="fn">2</span><span class="ft">${THUMB_TOOLS.length} payloads, ${THUMB_TOOLS.length} tools</span><span class="fs">3 candidates each · ${thumbSampleCount()} samples total</span></div>
-    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px;line-height:1.55">Each payload is written for how that tool actually takes direction. <b>Claude Design writes code</b>, so it gets the full brief, exact hex and frame geometry, and returns three whole candidates. <b>Gemini and ChatGPT generate images</b>, so they get no brief at all — a short preamble and three self-contained prompts, one object each, composed into candidates in step 2b.</p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px;line-height:1.55">Each payload is written for how that tool actually takes direction. <b>Claude Design writes code</b>, so it gets the full brief, exact hex and frame geometry, and returns three whole candidates. <b>Gemini and ChatGPT generate images</b>, so they get no brief at all — a short preamble and three self-contained prompts, one finished 1280×720 candidate each, using the specs below verbatim.</p>
     ${subjectPanel}
     <div class="tv-grid">${cards}</div>
     <div style="font-size:12px;color:var(--ink-soft);margin:14px 0 4px;line-height:1.55">
       <b>Export.</b> Mainly for Claude Design, which has no PNG export — drop its standalone HTML here and Studio reads the
       1280×720 frames straight out of it and writes one PNG each. Recraft's SVG works the same way.
-      Gemini and ChatGPT return objects, not candidates, so their images go to the composer in 2b rather than straight here.
+      Gemini and ChatGPT return finished frames at whatever size they feel like, so run them through here for the exact 1280×720 crop and the slot naming.
       Fonts are embedded before rasterising; without them a vector frame silently renders as serif.
       The small preview beside each row is the 168px squint check.
     </div>
     <div id="tx-panel"></div>
     <div class="flow-step-h" style="margin-top:16px"><span class="fn">2b</span><span class="ft">Compose</span><span class="fs">optional · build a candidate from a drawn object</span></div>
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:2px;line-height:1.55">
-      <b>This is where the Gemini and ChatGPT objects become candidates.</b> Claude Design returns whole frames and goes
-      straight through the exporter above; the two image tools return one flat object each, which lands here. Also use it for
-      any object lifted from the asset library or drawn elsewhere. It keys the background out,
+      <b>Skip this unless you need it.</b> All three tools return whole candidates now, so the normal route is step 2 straight
+      into the exporter. Use the composer when you have an <i>object</i> rather than a thumbnail — a hand, a silhouette, an
+      illustration lifted from the asset library or drawn anywhere else. It keys the background out,
       places the object per archetype, and sets the type in real Barlow Condensed at exact brand hex with the budget enforced
       at the input. A composed candidate cannot break G10 on palette, typeface, rotation or text length.
     </p>
@@ -4419,42 +4480,44 @@ function resetEpisode(){
 // improvised and returned two photorealistic movie posters for EP002. This is
 // addressed to the generator itself, counts its own output, and puts the hard
 // bans before the creative brief rather than after it.
-const THUMB_PROTOCOL = [
+const THUMB_FRAME_PROTOCOL = [
 '### What you are making',
 '',
-'One flat vector object per image. Not a thumbnail, not a poster, not a scene, not a composition. A single illustrated object on a plain background, the way an icon or a pictogram is drawn. Studio places it and sets all the type afterwards.',
+'Three finished YouTube thumbnails, 16:9 landscape, 1280 by 720 pixels. Each one is complete when it leaves you \u2014 background, illustration and lettering all drawn in the same image. Nothing is added afterwards.',
 '',
-'**There is no text in the image. None.** No words, no numbers, no letters, no labels on any part of the object, no captions, no signatures, no watermark, and no status lines of any kind \u2014 no candidate number, no DONE line, no heading, no notes to the reader. Anything you print goes in the chat, never in the picture. Text drawn into the frame makes the object unusable, because the typography is added later by a system that cannot remove yours.',
+'### The look',
 '',
-'### The background',
+'Flat editorial graphic design, not an illustration of a scene. One very dark ground, one large number, up to three words, one simple object. Hard edges and solid fills throughout. Think a printed magazine cover or a transit poster, not a render.',
 '',
-'Flat, solid, pure magenta, hex FF00FF, edge to edge. Nothing else on it. No gradient, no vignette, no shadow cast onto it, no floor, no horizon, no table, no room. The magenta is keyed out automatically, which is why it must be flat and why nothing may share its colour.',
+'### The ground',
 '',
-'Leave clear space on all four sides. Do not let the object touch the edge of the frame.',
+'One flat, solid, very dark warm near-black brown, hex 2A2520, edge to edge behind everything. No gradient, no vignette, no spotlight, no texture, no grain, no paper, no room, no floor, no horizon, no depth.',
 '',
-'### How the object is drawn',
+'### The colours',
 '',
-'- Flat vector illustration. Hard edges. Solid fills. A printed pictogram or a transit sign, not a photograph of a thing.',
-'- Two to four solid colours at most, from: warm off-white E4DDD0, slate blue-grey 8BA8B5, strong red E63946, near-black 2A2520. No other colours anywhere.',
-'- No gradients, no shading, no highlights, no drop shadows, no reflections, no glow, no outline stroke unless it is part of the drawing.',
-'- No texture, no grain, no noise, no grunge, no distress, no scratches, no wood grain, no brush marks.',
-'- No photorealism, no 3D rendering, no depth of field, no lens effects, no smoke, no dust, no sparks.',
-'- No logos, no brand marks, no interface elements, no charts, no graphs.',
-'- Silhouettes and hands are allowed and are often the strongest choice. A hand covering, removing, gripping or crossing out the object reads as human presence without a face. Draw hands as flat silhouettes. Never a face, a head or a full body.',
+'At most three colours on top of that ground, chosen from: warm off-white E4DDD0, golden yellow F5C518, strong red E63946, slate blue-grey 8BA8B5. No other colours anywhere. Solid fills only \u2014 no gradients, no shading, no highlights, no glow, no drop shadows, no reflections.',
 '',
-'### The object must read as one shape',
+'### The lettering',
 '',
-'One recognisable silhouette, centred, filling most of the clear area. If a viewer could not name the object from its outline alone at the size of a postage stamp, simplify it until they could.',
+'Heavy condensed sans-serif, all capitals, tightly set, sitting perfectly horizontal. Nothing is rotated, tilted, arched, italic, outlined, embossed, three-dimensional, or given a shadow or a gradient. The number is the largest thing in the image by a wide margin.',
 '',
-'### Three objects, three ideas',
+'Each prompt states the exact text for that thumbnail in quotation marks. Spell it exactly as written, character for character. Text is the one thing that cannot be fixed later, so if a generation comes back misspelled, discard it and generate again rather than trying to repair it.',
 '',
-'The three objects are for three different thumbnail concepts, so make them genuinely different subjects \u2014 not one subject drawn three ways.',
+'### Nothing else in the frame',
 '',
-'### What a failed attempt looks like',
+'Only the number and the words. No captions, no subtitles, no extra sentences, no labels written onto the object, no channel name, no logo, no watermark, no signature, no arrows, no callout boxes, no borders, no frame lines, no interface elements, no charts.',
 '',
-'A dramatic dark scene containing a rendered three-dimensional object with words written across its parts, a caption, a callout box, an arrow, and a small chart, sitting on a textured floor under moody lighting. Every element of that is wrong here. What is wanted is the single object from that scene, drawn flat, unlabelled, alone on magenta.',
+'### The object',
 '',
-'If a concept cannot be drawn without text, say so plainly and propose a different object rather than drawing one with words in it.'
+'One simple recognisable thing, drawn flat, as a pictogram would be. No photorealism, no 3D rendering, no lens effects, no smoke, no sparks. Never a face, a head or a full body. A flat hand silhouette is allowed and is often the strongest choice on a channel that shows no presenter.',
+'',
+'### The test that matters',
+'',
+'The image will be seen at 168 pixels wide in a crowded feed. If the number is not instantly readable and the object is not nameable at that size, the candidate has failed however clean it looks at full size.',
+'',
+'### Three thumbnails, three ideas',
+'',
+'The three are different concepts, not one idea in three colourways. Each prompt below names its own composition and its own object.'
 ].join('\n');
 
 // One payload cannot serve every tool. Claude Design WRITES CODE, so its
@@ -4489,67 +4552,65 @@ You are producing an editable design on a canvas, not a description of one. Buil
   },
   gemini: {
     label: 'Gemini',
-    sub: 'objects only · composed in 2b',
-    note: 'Draws the object. Whole thumbnails from this tool failed as raster and as SVG; a single flat object is what it is good at.',
+    sub: 'whole thumbnails · 3 prompts',
+    note: 'Generates finished frames from one prompt each. Strong on short lettering. Will approximate brand hex and cannot use Barlow, so expect it to score well on legibility and lose points on brand fidelity.',
     plans: {
       free: `### Plan · free tier
 
-The free tier caps image generations per day, so every prompt is a real cost. Nothing here involves code. You are asking for pictures.
+The free tier caps image generations per day, so every prompt is a real cost and a misspelled one is a wasted one.
 
-- One prompt per message. Paste prompt 1, wait for the image, then prompt 2, then prompt 3. All three in one message returns one composite picture containing three things, which is unusable.
-- If it replies with a description, an offer, or a clarifying question, answer with exactly: Generate the image.
-- Free-tier models drift toward photorealism and toward writing words on things. Do not correct with a follow-up. Re-paste the same prompt verbatim and take a fresh generation, because an edit pass rewrites the whole picture and usually adds text back.
-- Any letter, digit, label, caption or signature anywhere in the frame is a failed object. Studio cannot remove it. Regenerate.
-- If the background comes out shaded, textured, vignetted or anything other than one flat magenta, regenerate. The chroma key needs it flat.
+- One prompt per message. Paste prompt 1, wait for the image, then prompt 2, then prompt 3. All three in one message returns a collage.
+- Read the text in the result before anything else. If a single character of the number or the words is wrong, discard it and re-paste the same prompt. Asking it to fix the spelling rewrites the whole composition and usually breaks something else.
+- If it replies with a description, an offer or a clarifying question, answer with exactly: Generate the image.
+- Ask for 16:9. If it returns square anyway, keep it only if nothing important sits near the edges, because Studio's exporter will crop it to 1280 by 720.
+- Free-tier models drift toward photorealism and toward soft lighting within a few turns. Re-paste the prompt verbatim rather than correcting in conversation.
 - Do not re-explain the brief between attempts. Restating it restarts the negotiation and loses constraints.
-- Judge each object by loading it into Studio step 2b and keying it, not by how it looks in the chat. A background that reads flat on screen can still carry a gradient.`,
+- Judge at 168 pixels wide, not at full size. Shrink the image before deciding it worked.`,
       pro: `### Plan · paid tier
 
-More generations and a stronger image model. Spend the headroom on fresh attempts, not on edits.
+More generations and a stronger image model, which mainly buys you better lettering. Spend the headroom on fresh attempts, not on edits.
 
-- Take two or three shots at each object and keep the cleanest silhouette. Extra takes do not count toward the three objects.
-- Still prefer regenerating over editing. Edit passes reintroduce shading and labels even on paid tiers.
-- If the account offers a transparent background, use it and skip the magenta. Studio keys alpha as well. Say in the chat which you used.
-- Ask for the largest square it will produce. Studio trims to the artwork, so resolution is free headroom for the composer.
-- The test that matters: shrink the result to about 150 pixels wide. If you cannot name the object at that size, it is too detailed. Regenerate simpler.`
+- Take two or three shots at each thumbnail and keep the one with the cleanest lettering. Extra takes do not count toward the three candidates.
+- Targeted edits hold better here, but misspelled text is a generation-level failure. Regenerate it.
+- Ask for 16:9 explicitly and for the largest size the account allows. Studio crops to exactly 1280 by 720 either way.
+- Ask it to state, in the chat before generating, the exact characters it is about to letter. That one line catches most spelling failures before a generation is spent.
+- The number's cap height is the usual miss. If it comes back looking like a caption rather than a headline, regenerate rather than accepting it.`
     },
-    objectNotes: `### Gemini specifics
+    frameNotes: `### Gemini specifics
 
 - Do not narrate, do not explain, do not ask a clarifying question. Generate.
-- Aspect ratio does not matter. The object is cut out and repositioned, so square is fine.
-- Gemini drifts back toward photorealism within a few turns. Each prompt below restates flat vector, hard edges, solid fills and flat magenta for that reason. Do not strip those lines to shorten the prompt.
-- Gemini has a strong habit of lettering objects and of drawing status text into the frame. If any character of any kind appears in the output, regenerate rather than editing.`
+- Gemini drifts back toward photorealism and soft lighting within a few turns. Each prompt below restates flat, hard-edged and solid-filled for that reason. Do not strip those lines to shorten it.
+- Gemini will letter the object itself if left room \u2014 a brand name on a jar, a figure on a dial. The prompts forbid it explicitly; if it happens anyway, regenerate.
+- Gemini handles short strings well and long ones badly. The text in each prompt is deliberately at most a number and three words.`
   },
   gpt: {
     label: 'ChatGPT',
-    sub: 'objects only · composed in 2b',
-    note: 'Draws the object. Ignores instructions to write code and will build a scene unless told there is no scene.',
+    sub: 'whole thumbnails · 3 prompts',
+    note: 'Generates finished frames from one prompt each. Builds a scene unless told there is none. Same trade as Gemini: strong composition, approximate palette and type.',
     plans: {
       free: `### Plan · free tier
 
-Image generations are capped and refresh slowly here, so each prompt should buy a clean attempt rather than a repair.
+Image generations are capped and refresh slowly, so each prompt should buy a clean attempt rather than a repair.
 
 - One prompt per message, three messages, same chat.
-- This model's failure mode is building a scene around whatever you name: a desk, a floor, a room, a light source, a caption. The prompts below rule that out explicitly. If a scene appears anyway, regenerate rather than asking it to remove the background, which usually produces a second scene.
+- Check the lettering first. Any wrong character means discard and re-paste the same prompt. This model will happily "fix" text by rebuilding the entire image around it.
+- This model's failure mode is adding a scene: a desk, a wall, a light source, a shadow under the object, an explanatory caption. The prompts rule all of that out explicitly. If it appears anyway, regenerate.
 - If it answers with a description or a clarifying question, reply with exactly: Generate the image now.
-- Any text in the frame is a failure, including a label drawn onto the object and a signature in a corner. Regenerate.
-- If the tool offers a transparent background, take it and say so, and skip the magenta.
-- Square is fine. Studio trims to the artwork and the composer places it, so aspect ratio does not matter. Do not spend a generation fighting for 16:9.
-- If the chat has drifted after several attempts, start a fresh one and paste the preamble plus the single prompt again. Correcting a drifted chat costs more generations than restarting it.`,
+- Ask for 16:9. If it refuses, accept what it gives and let Studio's exporter crop to 1280 by 720 rather than burning a generation arguing.
+- If the chat has drifted after several attempts, start a fresh one and paste the preamble plus the single prompt again.`,
       pro: `### Plan · paid tier
 
-- Two or three takes per object, keep the cleanest. Takes are not candidates.
-- Before each generation ask it to restate in one line: the subject, how many colours, and that there is no text and no background scene. That single line catches most failures before a generation is spent.
-- Targeted edits hold better here than on free, but text in the image and a shaded background are prompt-level failures. Regenerate those rather than patching them.
-- Transparent background if offered.
-- Shrink to about 150 pixels wide and check the silhouette still reads. It is the only test that predicts behaviour at 168x94.`
+- Two or three takes per thumbnail, keep the cleanest lettering. Takes are not candidates.
+- Before generating, ask it to restate in one line: the exact number, the exact words, the number of colours, and that there is no background scene. That single line catches most failures before a generation is spent.
+- Targeted edits are more reliable here, but misspelled lettering and an invented background scene are prompt-level failures. Regenerate those.
+- Ask for 16:9 at the largest available size.
+- Shrink to 168 pixels wide before judging. It is the only test that predicts feed performance.`
     },
-    objectNotes: `### ChatGPT specifics
+    frameNotes: `### ChatGPT specifics
 
 - Do not narrate, do not explain, do not ask a clarifying question. Generate.
-- Aspect ratio does not matter. The object is cut out and repositioned, so square is fine.
-- If the tool offers a transparent background, use it, say so, and skip the magenta.
-- This model's failure mode is building a scene: a background, a setting, supporting props, explanatory labels. There is no scene here. One object, nothing around it.`,
+- This model's failure mode is building a scene: a setting, a surface, supporting props, a soft shadow, an explanatory caption. There is no scene here. A flat ground, one object, the lettering.
+- It also likes to add a small tagline under the headline. There is no tagline. Only the number and the words given in the prompt.`,
   }
 };
 const THUMB_TOOLS = ['design','gemini','gpt'];
@@ -4571,10 +4632,10 @@ const THUMB_CRIT = [
 
 async function buildPayload(sid, variant){
   const ep = activeEpisode();
-  // Object variants never see the generic payload. See thumbObjectPayload.
+  // Image tools never see the generic payload. See thumbFramePayload.
   if (sid === '3.8'){
     const _ov = String(variant || '').split(':');
-    if (_ov[0] === 'gemini' || _ov[0] === 'gpt') return thumbObjectPayload(ep, _ov[0], _ov[1] || 'free');
+    if (_ov[0] === 'gemini' || _ov[0] === 'gpt') return thumbFramePayload(ep, _ov[0], _ov[1] || 'free');
   }
   const meta = STAGE_META[sid];
   const pillarMap = {P1:'Why Everyone Gets X Wrong (30% · PRIMARY · word band 1,150–1,300)',
@@ -4956,83 +5017,123 @@ function thumbTrim(text, variant, ep){
        + '\n---\n\n*Purpose-built Stage 3.8 payload \u00b7 MPD Studio v' + APP_VERSION + ' \u00b7 ' + new Date().toISOString().slice(0,16) + '*\n';
 }
 
-// ── Stage 3.8 · object payload (v3.16.0) ────────────────────────────
-// Image models take a prompt, not a document. EP002 rounds 1-3 proved that
-// handing Gemini or ChatGPT the full stage payload — Strategy Brief, gates,
-// archetypes, cap heights, the mark — produces a thumbnail regardless of what
-// the closing section says: the model acts on what it read first. So object
-// variants bypass buildPayload entirely. No brief, no gates, no archetypes, no
-// artifact filename, no asset registry. A short preamble, tool and plan notes,
-// then three self-contained prompts meant to be pasted one at a time.
-const THUMB_PROMPT_RULES =
-  'Solid fills, hard edges, flat vector illustration in the style of a printed pictogram or a transit sign. '
-+ 'Two to four colours only, chosen from warm off-white #E4DDD0, slate blue-grey #8BA8B5, strong red #E63946 and near-black #2A2520. '
-+ 'The background is flat pure magenta #FF00FF, edge to edge, completely uniform. '
-+ 'The object is centred with clear space on all four sides and does not touch the edge of the frame. '
-+ 'No text of any kind: no letters, no numbers, no labels, no captions, no watermark, no signature, anywhere in the image. '
-+ 'No gradient, no shading, no highlight, no drop shadow, no reflection, no glow, no texture, no grain, no grunge. '
-+ 'No photorealism, no 3D render, no lighting effects, no depth of field. '
-+ 'No scene: no floor, no surface, no room, no horizon, no supporting props. '
-+ 'No face, no head, no full body; a flat hand silhouette is allowed and is often the strongest choice. '
-+ 'One recognisable silhouette that can still be named at postage-stamp size.';
+// ── Stage 3.8 · frame payload (v3.17.0) ─────────────────────────────
+// Gemini and ChatGPT now return finished 1280x720 candidates rather than
+// objects, so a single prompt has to carry everything the image will contain:
+// composition, palette, type treatment and the literal lettering. They still
+// never see the generic stage payload — no Strategy Brief, no gates, no
+// archetype theory, no JSON tail. A model handed a 40KB document produces a
+// document's worth of ideas in one frame; a model handed one paragraph
+// produces one image. Known limits, accepted deliberately: brand hex is
+// approximated, Barlow Condensed is unavailable, the amber signature bar is
+// best-effort. Those cost BRD points at judging and are visible there.
+const THUMB_ARCH_SHOT = {
+  slam: f => 'The number is the dominant element and sits left of centre. To its right, '
+           + f.subject + ' is drawn large and bleeds off the right edge of the frame.',
+  redaction: f => 'The object is ' + f.subject + ', drawn large and centred. A solid black bar is painted straight '
+           + 'across part of it, like a redaction in a document. The number sits clear of the bar and stays fully legible.',
+  broken: f => 'A single thick line runs horizontally across the frame, snaps near the middle and drops sharply. '
+           + 'The number sits at the break. ' + f.subject + ' is drawn small and simple beside the line.',
+  hand: f => 'A flat silhouette of a hand acts on ' + f.subject
+           + ': covering it, gripping it, lifting it away or crossing it out. Only the hand, never a face, a head or a body.',
+  split: f => 'A single thin vertical hairline divides the frame. On the left sits ' + f.subject
+           + ' in its original state; on the right the same object in a changed or diminished state. The number sits above the divide.'
+};
+const THUMB_ARCH_CAP = { slam:'about 55 to 60 percent', redaction:'about 45 to 50 percent',
+                         broken:'about 45 to 50 percent', hand:'about 45 to 50 percent',
+                         split:'about 45 percent' };
 
-function thumbObjectPayload(ep, tool, plan){
+function thumbFramePrompt(f){
+  const arch = THUMB_ARCH_SHOT[f.arch] ? f.arch : 'slam';
+  const subj = (f.subject || '').trim();
+  const num  = (f.number  || '').trim();
+  const wds  = (f.words   || '').trim();
+  const shot = THUMB_ARCH_SHOT[arch]({ subject: subj || '[SUBJECT — the object you proposed above]' });
+  const numColour = f.loss ? 'strong red #E63946' : 'golden yellow #F5C518';
+  return [
+'A 16:9 landscape YouTube thumbnail, 1280 by 720 pixels, in a flat editorial graphic style.',
+'',
+shot,
+'',
+'The whole background is one flat solid very dark warm near-black brown, hex #2A2520, edge to edge. No gradient, no vignette, no spotlight, no texture, no grain, no surface, no room, no floor, no horizon, no depth.',
+'',
+'Use at most three colours on top of that ground, from: warm off-white #E4DDD0, golden yellow #F5C518, strong red #E63946, slate blue-grey #8BA8B5. Solid fills only. No gradients, no shading, no highlights, no glow, no drop shadows, no reflections. The object is drawn flat like a pictogram, with hard edges. No photorealism, no 3D render, no lens effects.',
+'',
+'There are exactly two pieces of text in the image and nothing else. The large number reads exactly "' + (num || '[NUMBER — take this from the Strategy Brief, never invent it]')
+  + '". The words read exactly "' + (wds || '[WORDS — at most three]') + '". Spell both exactly as written here, character for character.',
+'',
+'The number is ' + numColour + ', set in a heavy condensed sans-serif, all capitals, tightly spaced, perfectly horizontal. Its cap height is ' + THUMB_ARCH_CAP[arch]
+  + ' of the image height, so it dominates the frame. The words are warm off-white #E4DDD0 in the same heavy condensed face, much smaller than the number. Nothing is rotated, tilted, arched, italic, outlined, embossed or three-dimensional, and no letter carries a shadow or a gradient.',
+'',
+'Directly beneath the number sits a solid golden yellow #F5C518 horizontal bar, starting at the number\'s left edge, '
+  + 'exactly as wide as the number and about nine pixels tall. It stays golden yellow even when the number is red.',
+'',
+'No other text of any kind: no caption, no subtitle, no tagline, no words written onto the object, no channel name, no logo, no watermark, no signature, no arrows, no callout boxes, no borders or frame lines around the image.',
+'',
+'Never a face, a head or a full body. A flat hand silhouette is allowed.',
+'',
+'It must be instantly readable when shrunk to 168 pixels wide.'
+  ].join('\n');
+}
+
+function thumbFramePayload(ep, tool, plan){
   const v = THUMB_VARIANTS[tool] || {};
-  const subs = thumbSubjects(ep);
-  const named = subs.filter(x => x && x.trim());
+  const frames = thumbFrames(ep);
   const planTxt = (v.plans && v.plans[plan]) ? v.plans[plan] : '';
+  const missingSubject = frames.some(f => !(f.subject || '').trim());
+  const missingNumber  = frames.some(f => !(f.number  || '').trim());
 
-  const chooseBlock = named.length === 3 ? '' : [
-'## Choose the missing subjects first',
+  const chooseBlock = !missingSubject ? '' : [
+'## Choose the missing objects first',
 '',
-'One or more prompts below carry a placeholder instead of a subject. Before generating anything, propose a concrete physical object for each placeholder, print the three as a numbered list in the chat, and then generate using them. Each must be:',
+'One or more prompts below carry a subject placeholder. Before generating anything, propose a concrete physical object for each placeholder, print the three as a numbered list in the chat, and then generate using them. Each must be:',
 '',
-'- a single physical thing a person could point at, not a concept, not a scene, not a chart',
-'- namable from its outline alone',
-'- a different subject from the other two, not the same idea drawn three ways',
-'- drawable with no text on it',
+'- a single physical thing a person could point at, not a concept and not a scene',
+'- namable from its outline alone at 168 pixels wide',
+'- a different subject from the other two',
 '',
-'### Episode context, for choosing subjects only',
+'### Episode context, for choosing objects only',
 '',
 '- Topic · ' + (ep.topic || ''),
 '- Angle · ' + (ep.pillar || ''),
 '- Search intent · ' + (ep.keyword || ''),
 '',
-'Nothing about this episode is written, drawn or implied inside the image. It informs the choice of object and nothing else.',
+'Nothing else about the episode appears in the image. The lettering is fixed by the prompts and must not be changed to match the topic.',
 ''
   ].join('\n');
 
-  const prompts = [0,1,2].map(i => {
-    const subj = (subs[i] || '').trim();
-    const head = subj
-      ? 'Flat vector pictogram of ' + subj + '. '
-      : '[SUBJECT ' + (i+1) + ' — replace with the object you proposed above]. Flat vector pictogram of it. ';
-    return [
-'### Prompt ' + (i+1) + ' of 3',
+  const numberBlock = !missingNumber ? '' : [
+'## A number is missing',
+'',
+'One or more prompts carry a number placeholder. **Do not invent a figure.** Every number on this channel\'s thumbnails comes from the episode research and nowhere else. Generate the candidates whose numbers are given, and say plainly in the chat which prompt is missing its figure rather than filling the gap yourself.',
+''
+  ].join('\n');
+
+  const prompts = frames.map((f, i) => [
+'### Prompt ' + (i+1) + ' of 3 · ' + ((THUMB_ARCHETYPES[f.arch] && THUMB_ARCHETYPES[f.arch].label) || f.arch),
 '',
 '```',
-head + THUMB_PROMPT_RULES,
+thumbFramePrompt(f),
 '```',
 ''
-    ].join('\n');
-  }).join('\n');
+  ].join('\n')).join('\n');
 
   return [
-'# MPD · Stage 3.8 · object artwork · ' + _epToken(ep.day)
+'# MPD · Stage 3.8 · thumbnails · ' + _epToken(ep.day)
   + ' · ' + (v.label || tool) + (THUMB_PLANS[plan] ? ' · ' + THUMB_PLANS[plan] : ''),
 '',
-'You are drawing three pieces of source artwork. You are not designing a thumbnail, and there is no thumbnail brief in this message. Read the whole message before generating.',
+'You are generating three finished YouTube thumbnails, one per prompt. Each image is complete as it leaves you. Read the whole message before generating.',
 '',
 '---',
 '',
-THUMB_PROTOCOL,
+THUMB_FRAME_PROTOCOL,
 '',
 '---',
 '',
-v.objectNotes || '',
+v.frameNotes || '',
 '',
 planTxt ? '---\n\n' + planTxt : '',
-chooseBlock ? '---\n\n' + chooseBlock : '',
+(chooseBlock || numberBlock) ? '---\n\n' + chooseBlock + numberBlock : '',
 '---',
 '',
 '## The three prompts',
@@ -5044,12 +5145,12 @@ prompts,
 '',
 'After each image, print one line in the chat, never in the picture:',
 '',
-'`OBJECT n of 3 COMPLETE — subject: [one thing] — colours: [2 to 4] — background: flat magenta — text in image: none`',
+'`THUMBNAIL n of 3 COMPLETE — number lettered: [exact characters] — words lettered: [exact characters] — colours: [up to 3] — background scene: none`',
 '',
 '---',
 '',
-'*Object payload · MPD Studio v' + APP_VERSION + ' · ' + new Date().toISOString().slice(0,16)
-  + ' · download the three images and load them into Studio step 2b.*',
+'*Thumbnail payload · MPD Studio v' + APP_VERSION + ' · ' + new Date().toISOString().slice(0,16)
+  + ' · download the three images and load them into Studio step 2 for the exact 1280x720 crop.*',
 ''
   ].join('\n');
 }
